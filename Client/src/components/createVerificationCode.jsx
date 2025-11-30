@@ -2,7 +2,7 @@ import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase";
 
 async function createVerificationCode(user) {
-  const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
+  const code = Math.floor(100000 + Math.random() * 900000).toString(); 
 
   await addDoc(collection(db, "verifications"), {
   email: user.email,

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   SafeAreaView,
   View,
@@ -11,16 +11,16 @@ import {
   ActivityIndicator,
   Modal,
   Alert,
+  BackHandler, 
 } from 'react-native';
-import { useAuth } from '../context/AuthContext'; // Adjust path if needed
-import { useRouter } from 'expo-router';
-import { db } from '../firebase'; // Adjust path if needed
-import { collection, onSnapshot, query, where, doc, updateDoc, getDocs, getDoc, Timestamp } from 'firebase/firestore'; // Import getDoc
+import { useAuth } from '../context/AuthContext';
+import { useRouter, useFocusEffect } from 'expo-router'; 
+import { db } from '../firebase';
+import { collection, onSnapshot, query, where, doc, updateDoc, getDocs, getDoc, Timestamp } from 'firebase/firestore'; 
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import BlankHeader from '../components/BlankHeader';
 import BottomNavBar from '../components/BottomNavBar';
 
-// --- Type Definitions ---
 interface Item {
   id: string;
   itemName: string;
@@ -35,7 +35,6 @@ interface Item {
   [key: string]: any;
 }
 
-// --- Item Card Component ---
 const ItemCard = ({ item, onSelect, isSelected, onOpenMenu }: { item: Item; onSelect: (id: string) => void; isSelected: boolean; onOpenMenu: (item: Item) => void; }) => {
   const getStatusStyle = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -82,10 +81,20 @@ const ItemCard = ({ item, onSelect, isSelected, onOpenMenu }: { item: Item; onSe
   );
 };
 
-// --- Main Screen Component ---
 function ItemManagementScreen() {
   const { currentUser } = useAuth();
   const router = useRouter();
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        router.replace('/home-screen');
+        return true; 
+      };
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [router])
+  );
 
   const [items, setItems] = useState<Item[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -97,7 +106,7 @@ function ItemManagementScreen() {
   const [showYearModal, setShowYearModal] = useState(false);
   const [showActionMenu, setShowActionMenu] = useState(false);
   const [activeItem, setActiveItem] = useState<Item | null>(null);
-  const [userData, setUserData] = useState(null); // ✅ FIX: Added state for userData
+  const [userData, setUserData] = useState(null); 
 
   const itemsPerPage = 10;
 
@@ -108,7 +117,6 @@ function ItemManagementScreen() {
     }
     setLoading(true);
 
-    // ✅ FIX: Fetch User Data
     const fetchUserData = async () => {
         try {
             const userRef = doc(db, 'users', currentUser.uid);
@@ -123,13 +131,20 @@ function ItemManagementScreen() {
 
     fetchUserData();
     
-    // Fetch Item Management Data
     const q = query(collection(db, 'itemManagement'), where("uid", "==", currentUser.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const managementItems = snapshot.docs.map(doc => ({
         id: doc.data().itemId,
         ...doc.data()
       })) as Item[];
+
+      managementItems.sort((a, b) => {
+        const dateA = a.createdAt?.seconds || 0;
+        const dateB = b.createdAt?.seconds || 0;
+        
+        return dateB - dateA; 
+      });
+
       setItems(managementItems);
       setLoading(false);
     }, (error) => {
@@ -213,9 +228,7 @@ function ItemManagementScreen() {
       <BlankHeader userData={userData} />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Item Management</Text>
-        <TouchableOpacity onPress={() => setBulkMode(!bulkMode)}>
-            <MaterialCommunityIcons name={bulkMode ? "close-box-multiple" : "check-box-multiple-outline"} size={28} color="#007AFF" />
-        </TouchableOpacity>
+        
       </View>
       
       <View style={styles.filtersContainer}>

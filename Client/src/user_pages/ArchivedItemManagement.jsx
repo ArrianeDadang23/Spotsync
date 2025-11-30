@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import UserNavigationBar from '../user_components/UserNavigationBar';
 import UserBlankHeader from '../user_components/UserBlankHeader';
 import './styles/ItemManagementPage.css';
-import Dropdown from 'react-bootstrap/Dropdown';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { db } from '../firebase';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
@@ -29,7 +28,7 @@ function ArchivedItemManagementPage() {
     const q = query(
       collection(db, 'itemManagement'),
       where("uid", "==", currentUser.uid),
-      where("archivedStatus", "==", true) // 👈 only archived items
+      where("archivedStatus", "==", true) 
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {

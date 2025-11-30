@@ -5,7 +5,6 @@ import { db } from '../firebase.jsx';
 import { getAuth, signOut } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import './styles/HeaderAccountDropdown.css';
-import CenterMessagePanel from './CenterMessagePanel.jsx';
 import Modal from 'react-bootstrap/Modal';
 import Button from 'react-bootstrap/Button';
 

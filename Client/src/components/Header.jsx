@@ -6,7 +6,7 @@ const isDesktopMode = () => {
   const userAgent = navigator.userAgent;
 
   const looksLikeDesktop = !/Mobi|Android|iPhone/i.test(userAgent);
-  const isSmallScreen = window.screen.width < 768; // Common breakpoint for tablets
+  const isSmallScreen = window.screen.width < 768; 
 
   return looksLikeDesktop && isSmallScreen;
 };
@@ -18,7 +18,7 @@ function Header() {
   useEffect(() => {
     const desktopModeOn = isDesktopMode();
     setIsDesktopView(desktopModeOn);
-    console.log("Is 'Desktop site' toggled on?", desktopModeOn); // For testing
+    console.log("Is 'Desktop site' toggled on?", desktopModeOn); 
   }, []);
 
   const signInClicked = () => {

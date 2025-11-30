@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import './styles/UserLostItemDetailPage.css';
+
 import UserLostItemsPage from './UserLostItemsPage';
 import { db } from '../firebase'; 
 import { addDoc, collection, doc, getDoc, serverTimestamp } from 'firebase/firestore';
@@ -17,12 +17,9 @@ const MAX_IMAGES = 1;
 
 
 function UserLostItemDetailPage() {
-//const API = "http://localhost:4000";
-const API = "https://server.spotsync.site";
-
+    const API = "https://server.spotsync.site";
     const { currentUser } = useAuth();
     const navigate = useNavigate();
-
     const [itemName, setItemName] = useState('');
     const [dateLost, setDateLost] = useState('');
     const [locationLost, setLocationLost] = useState('');
@@ -35,17 +32,12 @@ const API = "https://server.spotsync.site";
     const [section, setSection] = useState('');
     const [yearLevel, setYearLevel] = useState('');
     const [birthdate, setBirthdate] = useState('');
-    
     const [images, setImages] = useState(null); 
-    const [imagesWithMetadata, setImagesWithMetadata] = useState([]); 
-    
+    const [imagesWithMetadata, setImagesWithMetadata] = useState([]);  
     const [isModerating, setIsModerating] = useState(false);
-
-
     const [founder] = useState('Unknown');  
     const [owner, setOwner] = useState('');             
     const [claimStatus] = useState('unclaimed');
-
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [middleName, setMiddleName] = useState('');
@@ -54,16 +46,14 @@ const API = "https://server.spotsync.site";
     const [address, setAddress] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isMatching, setIsMatching] = useState(false);
-
     const dbRealtime = getDatabase();
-
-      const [customLocation, setCustomLocation] = useState("");
-
+    const [customLocation, setCustomLocation] = useState("");
     const [showLocationDropdown, setShowLocationDropdown] = useState(false);
-  const [filteredLocations, setFilteredLocations] = useState([]);
+    const [filteredLocations, setFilteredLocations] = useState([]);
 
-  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
-  const [filteredCategories, setFilteredCategories] = useState([]);
+    const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+    const [filteredCategories, setFilteredCategories] = useState([]);
+    const [progress, setProgress] = useState(0);
 
   const LOCATIONS = [
     "Arts and Culture Building",
@@ -292,9 +282,11 @@ const API = "https://server.spotsync.site";
         return;
     }
     if (!images || images.length === 0) return alert(`Please upload at least one image (Max ${MAX_IMAGES} allowed).`);
+    
 
 
     setIsSubmitting(true);
+    setProgress(0);
     try {
       const imageURLs = [];
       for (let i = 0; i < images.length; i++) {
@@ -336,6 +328,16 @@ const API = "https://server.spotsync.site";
         createdAt: serverTimestamp(),
       });
 
+      setIsMatching(true);
+
+      const interval = setInterval(() => {
+        setProgress((oldProgress) => {
+          if (oldProgress >= 90) return 90;
+          const diff = Math.random() * 10;
+          return Math.min(oldProgress + diff, 90);
+        });
+      }, 500);
+
       const matchResponse = await fetch(`${API}/api/match/lost-to-found`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -344,6 +346,9 @@ const API = "https://server.spotsync.site";
 
       if (!matchResponse.ok) throw new Error("Matching failed");
       const matches = await matchResponse.json();
+
+      clearInterval(interval);
+      setProgress(100);
 
       const top4Matches = matches.slice(0, 4);
 
@@ -376,12 +381,12 @@ const API = "https://server.spotsync.site";
             console.log("📧 Email API response:", emailData);
 
             if (!emailRes.ok) {
-              console.error(`❌ Failed to send email to ${match.foundItem?.personalInfo?.email}:`, emailData);
+              console.error(` Failed to send email to ${match.foundItem?.personalInfo?.email}:`, emailData);
             } else {
-              console.log(`✅ Email successfully sent to ${match.foundItem?.personalInfo?.email}`);
+              console.log(` Email successfully sent to ${match.foundItem?.personalInfo?.email}`);
             }
           } catch (err) {
-            console.error(`⚠️ Error sending email to ${match.foundItem?.personalInfo?.email}:`, err);
+            console.error(`Error sending email to ${match.foundItem?.personalInfo?.email}:`, err);
           }
 
 
@@ -468,26 +473,284 @@ const API = "https://server.spotsync.site";
     setIsMatching(false);
   };
 
-
-
-
+  const formStyles = {
+    mainContainer: {
+        minHeight: '100vh',
+        backgroundColor: '#f8f8f8', 
+        padding: '40px 0',
+        fontFamily: 'Arial, sans-serif',
+        display: 'flex',
+        justifyContent: 'center',
+    },
+    formBody: {
+        width: '90%',
+        maxWidth: '700px',
+        backgroundColor: 'white',
+        borderRadius: '16px',
+        boxShadow: '0 8px 16px rgba(0, 0, 0, 0.1)',
+        padding: '30px',
+        boxSizing: 'border-box',
+    },
+    heading: {
+        color: '#475C6F',
+        marginBottom: '25px',
+        textAlign: 'center',
+        fontSize: '28px',
+        fontWeight: '700',
+        borderBottom: '2px solid #333',
+        paddingBottom: '10px',
+    },
+    imageUploadBox: {
+        marginBottom: '30px',
+        border: '1px solid #e0e0e0',
+        padding: '20px',
+        borderRadius: '10px',
+        backgroundColor: '#fafafa',
+    },
+    imageFlexContainer: {
+        display: 'flex', 
+        flexWrap: 'wrap', 
+        gap: '15px', 
+        marginBottom: '10px',
+    },
+    imagePreview: {
+        position: 'relative', 
+        width: '100px', 
+        height: '100px',
+        borderRadius: '8px',
+        overflow: 'hidden',
+        border: '1px solid #ccc',
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
+    },
+    removeImageButton: {
+        position: 'absolute', 
+        top: '-10px', 
+        right: '-10px', 
+        background: '#e74c3c', 
+        color: 'white', 
+        border: '3px solid white', 
+        borderRadius: '50%', 
+        width: '28px', 
+        height: '28px', 
+        cursor: 'pointer', 
+        fontWeight: 'bold',
+        fontSize: '18px',
+        lineHeight: '1',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 0,
+    },
+    addImageLabel: {
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        width: '100px', 
+        height: '100px', 
+        border: '2px dashed #475C6F', 
+        borderRadius: '8px', 
+        cursor: 'pointer',
+        backgroundColor: 'white',
+        color: '#475C6F',
+        fontSize: '14px',
+        transition: 'background-color 0.2s',
+        textAlign: 'center',
+    },
+    imageHint: {
+        fontSize: '12px', 
+        color: '#777', 
+        textAlign: 'center', 
+        marginTop: '10px'
+    },
+    inputField: {
+      backgroundColor: 'white',
+        width: '100%', 
+        height: '45px',
+        padding: '0 15px',
+        margin: '10px 0',
+        border: '1px solid #ccc',
+        borderRadius: '8px',
+        fontSize: '16px',
+        color: '#475C6F',
+        boxSizing: 'border-box',
+        transition: 'border-color 0.2s',
+    },
+    threeInputsContainer: {
+      backgroundColor: 'white',
+        display: 'flex', 
+        gap: '10px', 
+        marginBottom: '10px',
+        alignItems: 'center',
+    },
+    dateInput: {
+      backgroundColor: 'white',
+      flex: '0 0 30%', 
+      height: '45px',
+      padding: '0 15px',
+      border: '1px solid #ccc',
+      borderRadius: '8px',
+      fontSize: '16px',
+      color: '#475C6F',
+      boxSizing: 'border-box',
+      WebkitAppearance: 'none',
+      colorScheme: 'light',
+    },
+    dropdownWrapper: {
+        position: 'relative', 
+        flex: '1', 
+    },
+    dropdownInput: {
+        width: '100%',
+        height: '45px',
+        padding: '0 15px',
+        border: '1px solid #ccc',
+        borderRadius: '8px',
+        fontSize: '16px',
+        color: '#475C6F',
+        backgroundColor: 'white',
+        boxSizing: 'border-box',
+        cursor: 'pointer',
+    },
+    dropdownMenu: {
+        position: 'absolute',
+        top: '48px',
+        left: 0,
+        width: '100%',
+        backgroundColor: 'white',
+        border: '1px solid #ddd',
+        borderRadius: '8px',
+        maxHeight: '200px',
+        overflowY: 'auto',
+        zIndex: 9999,
+    },
+    dropdownItem: {
+        padding: '10px 15px',
+        cursor: 'pointer',
+        borderBottom: '1px solid #eee',
+        transition: 'background-color 0.1s',
+    },
+    textareaContainer: {
+      position: 'relative',
+      marginBottom: '25px', 
+    },
+    textareaField: {
+      backgroundColor: 'white',
+        width: '100%',
+        minHeight: '120px',
+        padding: '15px',
+        border: '1px solid #ccc',
+        borderRadius: '8px',
+        fontSize: '16px',
+        color: '#475C6F',
+        resize: 'vertical',
+        boxSizing: 'border-box',
+    },
+    wordCount: {
+      position: 'absolute', 
+      bottom: '10px', 
+      right: '15px', 
+      fontSize: '12px', 
+      color: '#777',
+      backgroundColor: 'white',
+      padding: '2px 5px',
+      borderRadius: '4px',
+    },
+    submitButton: {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "10px",
+        backgroundColor: "#475C6F", 
+        color: "white",
+        padding: "12px 30px",
+        border: "none",
+        borderRadius: "10px",
+        cursor: "pointer",
+        fontSize: "17px",
+        fontWeight: "600",
+        marginTop: "30px",
+        width: '100%',
+        transition: 'background-color 0.2s, opacity 0.2s',
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+    },
+    disabledButton: {
+        opacity: 0.6,
+        cursor: "not-allowed",
+    },
+    matchingOverlay: {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 10000,
+    },
+    matchingContent: {
+      backgroundColor: 'white',
+      padding: '30px 40px',
+      borderRadius: '12px',
+      textAlign: 'center',
+      boxShadow: '0 0 20px rgba(0, 0, 0, 0.2)',
+    },
+    matchingText: {
+      fontSize: '18px',
+      fontWeight: '600',
+      color: '#475C6F',
+      marginBottom: '15px',
+    },
+    progressContainer: {
+      width: '250px',
+      height: '10px',
+      backgroundColor: '#e0e0e0',
+      borderRadius: '5px',
+      overflow: 'hidden',
+      margin: '0 auto 10px auto',
+    },
+    progressBar: {
+      height: '100%',
+      backgroundColor: '#BDDDFC',
+      transition: 'width 0.5s ease-in-out',
+    },
+    progressPercentage: {
+      fontSize: '14px',
+      color: '#475C6F',
+    }
+  };
 
 
     return (
       <>
-      <div className='background1' style={{position: 'absolute', width: '100%', height: '120vh', backgroundColor: '#D9D9D9'}}>
-        <div className="user-found-procedure-body" >
-          <h1>Report Lost Form</h1>
-          {/* --- UPDATED IMAGE UPLOAD AND PREVIEW SECTION --- */}
-          <div style={{ marginBottom: '20px', border: '2px solid #475C6F', padding: '5px', borderRadius: '8px' }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
+      {isMatching && (
+        <div style={formStyles.matchingOverlay}>
+          <div style={formStyles.matchingContent}>
+            <img src="/Spin_black.gif" alt="Scanning" style={{ width: '60px', height: '60px', marginBottom: '20px', filter: 'invert(1)' }} />
+            <div style={formStyles.matchingText}>AI Matching...</div>
+            <div style={formStyles.progressContainer}>
+              <div style={{ ...formStyles.progressBar, width: `${progress}%` }}></div>
+            </div>
+            <div style={formStyles.progressPercentage}>{Math.round(progress)}%</div>
+          </div>
+        </div>
+      )}
+      <div style={formStyles.mainContainer}>
+        <div style={formStyles.formBody}>
+          <h1 style={formStyles.heading}>Report Lost Form</h1>
+          
+          <div style={formStyles.imageUploadBox}>
+              <div style={{fontWeight: '600', color: '#475C6F', marginBottom: '10px'}}>Item Photo (Max {MAX_IMAGES})</div>
+              <div style={formStyles.imageFlexContainer}>
                   {imagesWithMetadata.map((img, index) => (
-                      <div key={index} style={{ position: 'relative', width: '100px', height: '100px' }}>
-                          <img src={img.url} alt="Item Preview" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '4px' }} />
+                      <div key={index} style={formStyles.imagePreview}>
+                          <img src={img.url} alt="Item Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           <button 
                               type="button" 
                               onClick={() => removeImage(index)} 
-                              style={{ position: 'absolute', top: '-10px', right: '-10px', background: 'red', color: 'white', border: 'none', borderRadius: '50%', width: '25px', height: '25px', cursor: 'pointer', fontWeight: 'bold' }}
+                              style={formStyles.removeImageButton}
                           >
                               &times;
                           </button>
@@ -495,28 +758,23 @@ const API = "https://server.spotsync.site";
                   ))}
                   {imagesWithMetadata.length < MAX_IMAGES && (
                       <label style={{ 
-                          display: 'flex', 
-                          flexDirection: 'column', 
-                          alignItems: 'center', 
-                          justifyContent: 'center', 
-                          width: '100px', 
-                          height: '100px', 
-                          border: '2px dashed #475C6F', 
-                          borderRadius: '4px', 
+                          ...formStyles.addImageLabel,
                           cursor: isModerating ? 'not-allowed' : 'pointer',
                           backgroundColor: isModerating ? '#f0f0f0' : 'white',
                           opacity: isModerating ? 0.6 : 1,
-                          fontSize: '12px'
-                      }}>
+                      }}
+                      onMouseEnter={(e) => isModerating ? null : e.currentTarget.style.backgroundColor = '#f4f4f4'}
+                      onMouseLeave={(e) => isModerating ? null : e.currentTarget.style.backgroundColor = 'white'}
+                      >
                           {isModerating ? (
                               <>
-                                  <img src="/Spin_black.gif" alt="Loading..." style={{ width: "20px", height: "20px" }} />
+                                  <img src="/Spin_black.gif" alt="Loading..." style={{ width: "20px", height: "20px", filter: 'invert(1)' }} />
                                   <span>{CHECKING_SHORT}</span>
                               </>
                           ) : (
                               <>
-                                  <span>+ Add Image</span>
-                                  
+                                  <span style={{fontSize: '24px', lineHeight: '1'}}><i className="fa fa-plus"></i>+</span>
+                                  <span>Add Image</span>
                               </>
                           )}
                           <input
@@ -530,42 +788,40 @@ const API = "https://server.spotsync.site";
                       </label>
                   )}
               </div>
-              <div style={{ fontSize: '12px', color: '#475C6F', textAlign: 'center' }}>
+              <div style={formStyles.imageHint}>
                  Image content is scanned for inappropriate material.
               </div>
           </div>
          
-          <form className="lost-item-form" onSubmit={handleSubmit} id="user-lost-form">
+          <form onSubmit={handleSubmit} id="user-lost-form">
             <input
               type="text"
               value={itemName}
-              placeholder="Item Name"
+              placeholder="Item Name (Max 5 words)"
               onChange={(e) => {
                 const words = e.target.value.trim().split(/\s+/);
                 if (words.length <= 5) {
                   setItemName(e.target.value);
                 } else {
-                  setItemName(words.slice(0, 5).join(" "));
+                  if (e.target.value.length < itemName.length) {
+                    setItemName(e.target.value);
+                  } else {
+                    setItemName(words.slice(0, 5).join(" "));
+                  }
                 }
               }}
-              style={{width: "98%"}}
+              style={formStyles.inputField}
               required
             />       
-            <div className='three-inputs' style={{width: '100%', height: '35px'}}>
+            <div style={formStyles.threeInputsContainer}>
               <input
                 type="date"
                 value={dateLost}
                 onChange={(e) => setDateLost(e.target.value)}
-                style={{
-                  width: '30%',
-                  color: '#475C6F',
-                  WebkitAppearance: 'none',
-                  marginRight: '10px'
-                  , height: '35px'
-                }}
+                style={formStyles.dateInput}
                 required
               />          
-              <div style={{ position: "relative", marginRight: "40px" }}>
+              <div style={formStyles.dropdownWrapper}>
                 <input
                   type="text"
                   value={locationLost}
@@ -581,33 +837,12 @@ const API = "https://server.spotsync.site";
                     setShowLocationDropdown(true);
                   }}
                   onBlur={() => setTimeout(() => setShowLocationDropdown(false), 150)}
-                  placeholder="Type or select location"
-                  style={{
-                    width: "100%",
-                    height: "35px",
-                    borderRadius: "8px",
-                    border: "2px solid #475C6F",
-                    color: "#475C6F",
-                    backgroundColor: "white",
-                    padding: "5px",
-                  }}
+                  placeholder="Location Lost"
+                  style={formStyles.dropdownInput}
                   required
                 />
                 {showLocationDropdown && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: "38px",
-                      left: 0,
-                      width: "100%",
-                      backgroundColor: "white",
-                      border: "1px solid #ccc",
-                      borderRadius: "8px",
-                      maxHeight: "150px",
-                      overflowY: "auto",
-                      zIndex: 9999,
-                    }}
-                  >
+                  <div style={formStyles.dropdownMenu}>
                     {filteredLocations.length > 0 ? (
                       filteredLocations.map((loc) => (
                         <div
@@ -616,11 +851,7 @@ const API = "https://server.spotsync.site";
                             setLocationLost(loc);
                             setShowLocationDropdown(false);
                           }}
-                          style={{
-                            padding: "8px",
-                            cursor: "pointer",
-                            borderBottom: "1px solid #eee",
-                          }}
+                          style={formStyles.dropdownItem}
                           onMouseEnter={(e) => (e.currentTarget.style.background = "#f0f0f0")}
                           onMouseLeave={(e) => (e.currentTarget.style.background = "white")}
                         >
@@ -628,13 +859,13 @@ const API = "https://server.spotsync.site";
                         </div>
                       ))
                     ) : (
-                      <div style={{ padding: "8px", color: "#888" }}>No match found</div>
+                      <div style={{ padding: "8px 15px", color: "#888" }}>No match found</div>
                     )}
                   </div>
                 )}
               </div>
 
-              <div style={{ position: "relative", width: "26%", marginRight: "10px" }}>
+              <div style={formStyles.dropdownWrapper}>
                 <input
                   type="text"
                   value={category}
@@ -652,34 +883,13 @@ const API = "https://server.spotsync.site";
                     setShowCategoryDropdown(true);
                   }}
                   onBlur={() => setTimeout(() => setShowCategoryDropdown(false), 150)}
-                  placeholder="Type or select category"
-                  style={{
-                    width: "100%",
-                    height: "35px",
-                    borderRadius: "8px",
-                    border: "2px solid #475C6F",
-                    color: "#475C6F",
-                    backgroundColor: "white",
-                    padding: "5px",
-                  }}
+                  placeholder="Category"
+                  style={formStyles.dropdownInput}
                   required
                 />
 
                 {showCategoryDropdown && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: "38px",
-                      left: 0,
-                      width: "100%",
-                      backgroundColor: "white",
-                      border: "1px solid #ccc",
-                      borderRadius: "8px",
-                      maxHeight: "150px",
-                      overflowY: "auto",
-                      zIndex: 9999,
-                    }}
-                  >
+                  <div style={formStyles.dropdownMenu}>
                     {filteredCategories.length > 0 ? (
                       filteredCategories.map((cat) => (
                         <div
@@ -688,11 +898,7 @@ const API = "https://server.spotsync.site";
                             setCategory(cat);
                             setShowCategoryDropdown(false);
                           }}
-                          style={{
-                            padding: "8px",
-                            cursor: "pointer",
-                            borderBottom: "1px solid #eee",
-                          }}
+                          style={formStyles.dropdownItem}
                           onMouseEnter={(e) => (e.currentTarget.style.background = "#f0f0f0")}
                           onMouseLeave={(e) => (e.currentTarget.style.background = "white")}
                         >
@@ -700,78 +906,73 @@ const API = "https://server.spotsync.site";
                         </div>
                       ))
                     ) : (
-                      <div style={{ padding: "8px", color: "#888" }}>No match found</div>
+                      <div style={{ padding: "8px 15px", color: "#888" }}>No match found</div>
                     )}
                   </div>
                 )}
               </div>
             </div>
               
-            <br />
-            <div className='describe'>
+            
+            <div style={formStyles.textareaContainer}>
                 <textarea
-              value={itemDescription}
-              onChange={(e) => limitWords(e.target.value, setItemDescription)}
-              placeholder='Describe the item'
-              style={{ color: '#475C6F', width: '98%', marginBottom: '30px'}}
-              required
-            />
-            <div style={{ position: 'absolute', top: '67%', marginLeft: '2%', fontSize: '12px', color: '#475C6F' }}>
-              {countWords(itemDescription)}/{WORD_LIMIT} words
+                  value={itemDescription}
+                  onChange={(e) => limitWords(e.target.value, setItemDescription)}
+                  placeholder='Describe the item (e.g., color, size, brand, unique markings)'
+                  style={formStyles.textareaField}
+                  required
+                />
+                <div style={formStyles.wordCount}>
+                  {countWords(itemDescription)}/{WORD_LIMIT} words
+                </div>
             </div>
 
-            <br />
-
-            <textarea
-              value={howItemLost}
-              onChange={(e) => limitWords(e.target.value, setHowItemLost)}
-              placeholder='How item lost?'
-              style={{ color: '#475C6F', width: '98%', }}
-              required
-            />
-            <div style={{ position: 'absolute', top: '96%', marginLeft: '2%', fontSize: '12px', color: '#475C6F' }}>
-              {countWords(howItemLost)}/{WORD_LIMIT} words
-            </div>
+            <div style={formStyles.textareaContainer}>
+              <textarea
+                value={howItemLost}
+                onChange={(e) => limitWords(e.target.value, setHowItemLost)}
+                placeholder='How did you lose the item and what efforts have you made to find it?'
+                style={formStyles.textareaField}
+                required
+              />
+              <div style={formStyles.wordCount}>
+                {countWords(howItemLost)}/{WORD_LIMIT} words
+              </div>
             </div>
           </form>
+          
           <button
               type="submit"
               form="user-lost-form" 
               disabled={isSubmitting || isMatching || isModerating}
               style={{
-                position: "absolute",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "10px",
-                backgroundColor: "#BDDDFC",
-                color: "black",
-                padding: "12px 25px",
-                border: "1px solid #475C6F",
-                borderRadius: "10px",
-                cursor: isSubmitting || isMatching || isModerating ? "not-allowed" : "pointer",
-                fontSize: "16px",
-                marginTop: "120px",
-                fontWeight: "500",
+                ...formStyles.submitButton,
+                ...((isSubmitting || isMatching || isModerating) ? formStyles.disabledButton : {}),
+              }}
+              onMouseEnter={(e) => {
+                if (!(isSubmitting || isMatching || isModerating)) e.currentTarget.style.backgroundColor = '#384d5c'; // Darker on hover
+              }}
+              onMouseLeave={(e) => {
+                if (!(isSubmitting || isMatching || isModerating)) e.currentTarget.style.backgroundColor = '#475C6F'; 
               }}
             >
               {isModerating ? (
                 <>
-                  <img src="/Spin_black.gif" alt="Loading..." style={{ width: "20px", height: "20px" }} />
+                  <img src="/Spin_black.gif" alt="Loading..." style={{ width: "20px", height: "20px", filter: 'invert(1)' }} />
                   <span>{CHECKING_SHORT}</span>
                 </>
               ) : isMatching ? (
                 <>
-                  <img src="/Spin_black.gif" alt="Loading..." style={{ width: "20px", height: "20px" }} />
+                  <img src="/Spin_black.gif" alt="Loading..." style={{ width: "20px", height: "20px", filter: 'invert(1)' }} />
                   <span>AI Matching...</span>
                 </>
               ) : isSubmitting ? (
                 <>
-                  <img src="/Spin_black.gif" alt="Loading..." style={{ width: "20px", height: "20px" }} />
+                  <img src="/Spin_black.gif" alt="Loading..." style={{ width: "20px", height: "20px", filter: 'invert(1)' }} />
                   <span>Submitting...</span>
                 </>
               ) : (
-                "Submit Report"
+                "Submit Lost Report"
               )}
             </button> 
         </div>

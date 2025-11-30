@@ -57,11 +57,9 @@ function VerificationModal({ show, onClose, user, sendVerificationEmail, onVerif
           return;
         }
 
-        // ✅ Success
         setVerified(true);
         await onVerified();
 
-        // Auto-close after 3s
         setTimeout(() => {
           onClose();
         }, 3000);
@@ -85,7 +83,7 @@ function VerificationModal({ show, onClose, user, sendVerificationEmail, onVerif
       await sendVerificationEmail(user, newCode);
 
       setMessage("New code has been sent to your email.");
-      setExpiryCountdown(120); // reset countdown
+      setExpiryCountdown(120);
     } catch (err) {
       console.error("Resend error:", err);
       setError("Failed to resend verification code.");
@@ -98,10 +96,9 @@ function VerificationModal({ show, onClose, user, sendVerificationEmail, onVerif
     return `${m}:${s}`;
   };
 
-  // ✅ Handle Enter key press
   const handleKeyPress = (e) => {
     if (e.key === "Enter" && !verifying && expiryCountdown > 0) {
-      e.preventDefault(); // prevent accidental form submission
+      e.preventDefault(); 
       handleVerify();
     }
   };
@@ -122,7 +119,7 @@ function VerificationModal({ show, onClose, user, sendVerificationEmail, onVerif
               placeholder="Enter code"
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              onKeyDown={handleKeyPress} // 👈 Enable Enter key to verify
+              onKeyDown={handleKeyPress}
               disabled={verifying || expiryCountdown <= 0}
             />
             <p
@@ -170,7 +167,7 @@ function VerificationModal({ show, onClose, user, sendVerificationEmail, onVerif
             fontWeight: "bold",
           }}
         >
-          ✅ Email Verified Successfully!
+          Email Verified Successfully!
         </Modal.Body>
       )}
     </Modal>

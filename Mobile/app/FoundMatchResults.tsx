@@ -51,7 +51,6 @@ interface ItemManagementData {
   [key: string]: any;
 }
 
-// --- Reusable Components ---
 const MatchCard = ({ match, index, itemType }: { match: Match; index: number; itemType: string }) => {
   const matchItem = itemType === 'found' ? match.lostItem : match.foundItem;
   if (!matchItem) return null;
@@ -60,7 +59,7 @@ const MatchCard = ({ match, index, itemType }: { match: Match; index: number; it
 
   return (
     <View style={styles.card}>
-      <Text style={styles.matchTitle}>Top {index + 1} </Text>
+      <Text style={styles.matchTitle}>Top {index + 1} Match</Text>
       {matchItem.images && matchItem.images.length > 0 && (
         <Image source={{ uri: matchItem.images[0] }} style={styles.matchImage} />
       )}
@@ -102,14 +101,15 @@ const MatchCard = ({ match, index, itemType }: { match: Match; index: number; it
                 </View>
             )}
             <Text style={styles.reporterName}>{matchItem.personalInfo?.firstName} {matchItem.personalInfo?.lastName || 'Unknown User'}</Text>
-            <Text style={styles.reporterName}> - {matchItem.personalInfo?.course?.abbr}</Text>
+            {matchItem.personalInfo?.course?.abbr && (
+                <Text style={styles.reporterName}> - {matchItem.personalInfo.course.abbr}</Text>
+            )}
         </View>
       </View>
     </View>
   );
 };
 
-// --- Main Screen Component ---
 function FoundMatchResults() {
   const params = useLocalSearchParams();
   const router = useRouter();
@@ -119,6 +119,8 @@ function FoundMatchResults() {
   const [loading, setLoading] = useState(true);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
+  
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     if (params.itemData) {
@@ -147,7 +149,7 @@ function FoundMatchResults() {
         });
         Alert.alert("Success", "Thank you for your feedback!");
         setShowRatingModal(false);
-        router.push('/ItemManagementScreen'); // Navigate home after successful rating
+        router.push('/ItemManagementScreen'); 
     } catch (error) {
         console.error("Failed to submit rating:", error);
         Alert.alert("Error", "Could not submit your rating. Please try again.");
@@ -168,14 +170,15 @@ function FoundMatchResults() {
     );
   }
 
-  const filteredMatches = itemData.topMatches || [];
+  const allMatches = itemData.topMatches || [];
+  const displayedMatches = showAll ? allMatches : allMatches.slice(0, 4);
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.matchesSection}>
-          {filteredMatches.length > 0 ? (
-            filteredMatches.map((match, index) => (
+          {allMatches.length > 0 ? (
+            displayedMatches.map((match, index) => (
               <MatchCard
                 key={match.transactionId || index}
                 match={match}
@@ -188,13 +191,21 @@ function FoundMatchResults() {
           )}
         </View>
 
-         {/* Action buttons */}
+        {allMatches.length > 4 && (
+            <TouchableOpacity 
+                style={styles.seeAllButton} 
+                onPress={() => setShowAll(!showAll)}
+            >
+                <Text style={styles.seeAllButtonText}>
+                    {showAll ? "Show Less" : `See All Matches (${allMatches.length})`}
+                </Text>
+            </TouchableOpacity>
+        )}
+
          <View style={styles.actionButtonContainer}>
-             {/* ✨ FIX: Added back the "Report Another Item" button */}
             <TouchableOpacity style={styles.secondaryButton} onPress={() => router.push('/ReportFoundItemScreen')}>
                 <Text style={styles.secondaryButtonText}>Report Another</Text>
             </TouchableOpacity>
-            {/* ✨ FIX: "Done" button still triggers the rating modal */}
             <TouchableOpacity style={styles.primaryButton} onPress={() => setShowRatingModal(true)}>
                 <Text style={styles.primaryButtonText}>Done & Rate</Text>
             </TouchableOpacity>
@@ -216,7 +227,7 @@ const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
   scrollContainer: { padding: 16, paddingBottom: 80 },
   card: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3, },
-  sectionTitle: { fontSize: 22, fontWeight: 'bold', marginBottom: 20, color: '#333', textAlign: 'center' }, // Increased bottom margin
+  sectionTitle: { fontSize: 22, fontWeight: 'bold', marginBottom: 20, color: '#333', textAlign: 'center' }, 
   detailsContainer: { marginBottom: 10 },
   detailRow: { fontSize: 16, color: '#444', marginBottom: 8 },
   detailLabel: { fontWeight: 'bold' },
@@ -238,18 +249,18 @@ const styles = StyleSheet.create({
   reporterName: { fontSize: 14, color: '#333' },
   actionButtonContainer: {
       flexDirection: 'row',
-      justifyContent: 'space-between', // Changed to space-between
+      justifyContent: 'space-between', 
       marginTop: 20,
       marginBottom: 20,
-      paddingHorizontal: 10, // Added padding for spacing
+      paddingHorizontal: 10, 
   },
   primaryButton: {
       backgroundColor: '#007AFF',
       paddingVertical: 15,
       borderRadius: 25,
       alignItems: 'center',
-      flex: 1, // Make buttons share width
-      marginLeft: 5, // Space between buttons
+      flex: 1, 
+      marginLeft: 5, 
   },
   primaryButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   secondaryButton: {
@@ -258,8 +269,8 @@ const styles = StyleSheet.create({
       paddingVertical: 15,
       borderRadius: 25,
       alignItems: 'center',
-      flex: 1, // Make buttons share width
-      marginRight: 5, // Space between buttons
+      flex: 1, 
+      marginRight: 5, 
   },
   secondaryButtonText: { color: '#007AFF', fontSize: 16, fontWeight: 'bold' },
   noMatchesText: {
@@ -267,6 +278,21 @@ const styles = StyleSheet.create({
       color: '#666',
       textAlign: 'center',
       paddingVertical: 20,
+  },
+  seeAllButton: {
+      paddingVertical: 12,
+      paddingHorizontal: 20,
+      borderRadius: 8,
+      borderColor: '#475C6F',
+      borderWidth: 1,
+      alignSelf: 'center',
+      marginTop: 10,
+      marginBottom: 20,
+  },
+  seeAllButtonText: {
+      color: '#475C6F',
+      fontSize: 14,
+      fontWeight: 'bold',
   }
 });
 

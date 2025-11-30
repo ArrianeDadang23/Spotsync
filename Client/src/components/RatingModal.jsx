@@ -11,12 +11,12 @@ export default function RatingModal({ onClose }) {
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false); // ✅ Loading state
+  const [loading, setLoading] = useState(false); 
   const navigate = useNavigate();
 
   const handleSubmit = async () => {
     if (rating === 0) return alert("Please select a rating before submitting.");
-    setLoading(true); // ✅ Start loading
+    setLoading(true);
 
     try {
       await addDoc(collection(db, "ratings"), {
@@ -29,7 +29,7 @@ export default function RatingModal({ onClose }) {
       setSubmitted(true);
 
       setTimeout(() => {
-        setLoading(false); // ✅ Stop loading
+        setLoading(false); 
         onClose();
         navigate(`/users/item-management/${user?.uid}`);
       }, 2000);
@@ -50,7 +50,6 @@ export default function RatingModal({ onClose }) {
             : "Rate our matching!"}
         </h2>
 
-        {/* Spinner when loading */}
         {loading ? (
           <div style={{ textAlign: "center", marginTop: "20px" }}>
             <img
@@ -61,7 +60,6 @@ export default function RatingModal({ onClose }) {
           </div>
         ) : !submitted ? (
           <>
-            {/* ⭐ Rating stars */}
             <div className="stars-container">
               {[1, 2, 3, 4, 5].map((star) => (
                 <span
@@ -74,7 +72,6 @@ export default function RatingModal({ onClose }) {
               ))}
             </div>
 
-            {/* 📝 Feedback textarea */}
             <textarea
               placeholder="Tell us what you think (optional)"
               value={feedback}
@@ -93,7 +90,6 @@ export default function RatingModal({ onClose }) {
               }}
             />
 
-            {/* ✅ Submit button */}
             <button
               onClick={handleSubmit}
               disabled={loading}

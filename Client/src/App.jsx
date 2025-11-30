@@ -1,12 +1,10 @@
-// App.jsx
+
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import LandingPage from "./pages/LandingPage";
 import SignInPage from "./pages/SignInPage";
 import LogInPage from "./pages/LogInPage";
 import DashboardPage from "./pages/DashboardPage";
 import HomePage from "./user_pages/HomePage";
-import { getAuth } from "firebase/auth";
-import { useEffect } from "react";
 import LostItemsPage from "./pages/LostItemsPage";
 import SettingsPage from "./pages/SettingsPage";
 import FoundItemsPage from "./pages/FoundItemsPage";
@@ -48,6 +46,7 @@ import GuestEmailRequestPage from "./pages/GuestEmailRequestPage";
 import ErrorBoundary from "./components/ErrorBoundary";
 import GuestProcessClaimPage from "./pages/GuestProcessClaimPage";
 import InactivityHandler from "./InactivityHandler";
+import HelpPage from "./user_pages/HelpPage";
 
 function App() {
 
@@ -99,6 +98,9 @@ function App() {
             <Route path="/users/item-management/more-details/:uid" element={<MatchMoreDetailsPage />} />
             <Route path="/users/messages/:uid" element={<UserMessagesPage />} />
             <Route path="/users/notifications/:uid" element={<UserNotificationPage />} />
+            <Route path="/users/help/:uid" element={<HelpPage />} />
+
+
 
             <Route path="/guest/:uid" element={<GuestReportPage />} />
             <Route path="/guest/email/:uid" element={<GuestEmailRequestPage />} />

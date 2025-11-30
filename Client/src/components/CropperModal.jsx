@@ -1,4 +1,3 @@
-// CropperModal.jsx
 import React, { useState, useCallback } from "react";
 import Cropper from "react-easy-crop";
 import { Modal, Button } from "react-bootstrap";
@@ -35,7 +34,7 @@ function CropperModal({ show, imageSrc, aspect, onClose, onCropComplete }) {
       croppedAreaPixels.height
     );
 
-    const base64Image = canvas.toDataURL("image/jpeg"); // cropped image in base64
+    const base64Image = canvas.toDataURL("image/jpeg"); 
     onCropComplete(base64Image);
     onClose();
   };

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   SafeAreaView,
   View,
@@ -7,8 +7,10 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Modal, // Added Modal back for completeness
+  Modal, 
+  BackHandler, 
 } from "react-native";
+import { useRouter, useFocusEffect } from 'expo-router'; 
 import { getDatabase, ref, onValue, remove } from "firebase/database";
 import { getAuth, User } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
@@ -17,7 +19,6 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import BlankHeader from "../components/BlankHeader";
 import BottomNavBar from "../components/BottomNavBar";
 
-// Interfaces and Config
 interface NotificationItem {
   id: string;
   type: string;
@@ -48,7 +49,6 @@ const typeConfig: TypeConfig = {
   },
 };
 
-// FloatingAlert Component
 const FloatingAlert: React.FC<{ message: string; type: string }> = ({
   message,
   type,
@@ -63,7 +63,6 @@ const FloatingAlert: React.FC<{ message: string; type: string }> = ({
   </View>
 );
 
-// FormattedMessage Component
 const FormattedMessage: React.FC<{ text: string; style: any }> = ({ text, style }) => {
   if (!text) return null;
   const parts = text.split(/(<b>.*?<\/b>)/g);
@@ -84,9 +83,24 @@ const FormattedMessage: React.FC<{ text: string; style: any }> = ({ text, style 
 };
 
 const UserNotificationScreen: React.FC = () => {
+  const router = useRouter(); 
   const [sections, setSections] = useState<
     { title: string; data: NotificationItem[] }[]
   >([]);
+
+  // --- FIX: Correct Way to Remove Listener ---
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        router.replace('/home-screen');
+        return true; 
+      };
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove(); 
+    }, [router])
+  );
+  // -------------------------------------------
+
   const [loading, setLoading] = useState(true);
   const [alert, setAlert] = useState<{ message: string; type: string } | null>(
     null
@@ -218,7 +232,6 @@ const UserNotificationScreen: React.FC = () => {
     );
   };
 
-  // ✨ FIX: Main return statement is now the only one.
   return (
     <SafeAreaView style={styles.container}>
       {alert && <FloatingAlert message={alert.message} type={alert.type} />}
@@ -227,19 +240,15 @@ const UserNotificationScreen: React.FC = () => {
         <Text style={styles.headerTitle}>Notifications</Text>
       </View>
 
-      {/* ✨ FIX: Conditional rendering is now inside the main layout */}
       {loading ? (
-        // Show loading indicator in the content area
         <View style={styles.emptyContainer}>
             <ActivityIndicator size="large" color="#007BFF" />
         </View>
       ) : sections.length === 0 ? (
-        // Show empty message when not loading and no data
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>No notifications yet</Text>
         </View>
       ) : (
-        // Show the list when not loading and there is data
         <SectionList
           sections={sections}
           keyExtractor={(item) => item.id}

@@ -1,4 +1,3 @@
-// context/NotificationContext.jsx
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { getDatabase, ref, onValue, update, get } from "firebase/database";
 import { getAuth } from "firebase/auth";

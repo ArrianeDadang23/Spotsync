@@ -112,15 +112,14 @@
 
 
 .notif-badge.expanded {
-  top: 66%;   /* adjust as needed */
-  left: 15%; /* positions near the bell when text is visible */
+  top: 66%;   
+  left: 15%; 
 }
 
-/* 🔹 When sidebar collapsed */
 .notif-badge.collapsed {
   opacity: 1;
-  top: 66%;     /* adjust as needed */
-  right: 15%;   /* sticks to bell icon */
+  top: 66%;   
+  right: 15%;   
 }
 
 

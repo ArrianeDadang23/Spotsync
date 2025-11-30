@@ -26,7 +26,6 @@ export default function MatchItems() {
   const [matchResult, setMatchResult] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Fetch items from Firestore
   useEffect(() => {
     const fetchData = async () => {
       const lostSnap = await getDocs(collection(db, "lostItems"));
@@ -37,7 +36,6 @@ export default function MatchItems() {
     fetchData();
   }, []);
 
-  // Compare lost and found items
   const handleCompare = async () => {
     if (!selectedLost || !selectedFound) {
       alert("Please select both lost and found items.");

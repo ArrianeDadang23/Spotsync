@@ -1,476 +1,367 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import QrScanner from "qr-scanner";
-import "./styles/ProcessClaimPage.css";
 import NavigationBar from "../components/NavigationBar";
 import BlankHeader from "../components/BlankHeader";
+import FloatingAlert from "../components/FloatingAlert";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { Spinner } from "react-bootstrap";
+import "bootstrap/dist/css/bootstrap.min.css";
+
 import { db } from "../firebase";
 import {
-  collection,
-  query,
-  where,
-  getDocs,
-  doc,
-  updateDoc,
-  addDoc,
-  setDoc,
+  collection, query, where, getDocs, doc, updateDoc, addDoc, setDoc
 } from "firebase/firestore";
-import FloatingAlert from "../components/FloatingAlert";
 import {
-  getDatabase,
-  ref,
-  push,
-  set,
-  serverTimestamp as rtdbServerTimestamp,
+  getDatabase, ref, push, set, serverTimestamp as rtdbServerTimestamp
 } from "firebase/database";
-import { useAuth } from "../context/AuthContext";
-import { Modal, Button, Form, Spinner } from "react-bootstrap";
 
-function ProcessClaimPage() {
- const API = "http://localhost:4000"; 
- //const API = "https://server.spotsync.site";
-  const [capturedImage, setCapturedImage] = useState(null);
-  const [qrResult, setQrResult] = useState(null);
-  const [userData, setUserData] = useState(null);
-  const { currentUser } = useAuth();
+const theme = {
+  primary: '#0d6efd',
+  success: '#198754',
+  text: '#212529',
+  muted: '#6c757d',
+  bg: '#f8f9fa',
+  white: '#ffffff',
+  border: '#dee2e6'
+};
 
-  const [devices, setDevices] = useState([]);
-  const [selectedDeviceId, setSelectedDeviceId] = useState(null);
-
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
-  const scannerRef = useRef(null);
-
-  const [loading, setLoading] = useState(false);
-  const { matchId } = useParams();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const matchData = location.state?.match || null;
-  const matchDocId = matchId || matchData?.id;
-
-  const [alert, setAlert] = useState(null);
-
-  const notificationsRef = collection(db, "notifications");
-  const transactionId = matchDocId || `TXN-${Date.now()}`;
-  const dbRealtime = getDatabase();
-
-  const sanitizeData = (obj) =>
-    Object.fromEntries(
-      Object.entries(obj).map(([k, v]) => [k, v === undefined ? null : v])
-    );
-
-  // Stop scanner and video safely
-const stopScanner = async () => {
-  try {
-    if (scannerRef.current) {
-      await scannerRef.current.stop();
-      scannerRef.current.destroy();
-      scannerRef.current = null;
-    }
-
-    if (videoRef.current?.srcObject) {
-      videoRef.current.srcObject.getTracks().forEach((track) => track.stop());
-      videoRef.current.srcObject = null;
-    }
-
-    // Wait a tiny bit to ensure the browser releases the camera
-    await new Promise((res) => setTimeout(res, 200));
-  } catch (err) {
-    console.warn("Error stopping scanner:", err);
+const styles = {
+  pageWrapper: {
+    backgroundColor: theme.bg,
+    minHeight: '100vh',
+    paddingBottom: '40px'
+  },
+  container: {
+    maxWidth: '1000px',
+    margin: '0 auto',
+    padding: '0 20px',
+  },
+  header: {
+    padding: '30px 0',
+    textAlign: 'center',
+  },
+  card: {
+    backgroundColor: theme.white,
+    borderRadius: '16px',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+    overflow: 'hidden',
+    padding: '30px',
+    transition: 'all 0.3s ease'
+  },
+  stepperBox: {
+    display: 'flex',
+    justifyContent: 'center',
+    marginBottom: '30px',
+    gap: '15px'
+  },
+  stepDot: (active, completed) => ({
+    width: '40px',
+    height: '40px',
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: 'bold',
+    backgroundColor: completed ? theme.success : active ? theme.primary : '#e9ecef',
+    color: completed || active ? theme.white : theme.muted,
+    border: active ? `3px solid ${theme.primary}40` : 'none',
+    transition: 'all 0.3s ease'
+  }),
+  videoWrapper: {
+    position: 'relative',
+    width: '100%',
+    maxWidth: '600px',
+    aspectRatio: '4/3',
+    backgroundColor: '#000',
+    borderRadius: '12px',
+    overflow: 'hidden',
+    margin: '0 auto 20px auto',
+    boxShadow: '0 8px 16px rgba(0,0,0,0.2)'
+  },
+  video: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover'
+  },
+  overlay: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    width: '70%',
+    height: '60%',
+    border: '4px dashed rgba(255, 255, 255, 0.8)',
+    borderRadius: '12px',
+    boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
+    pointerEvents: 'none'
+  },
+  detailRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    padding: '12px 0',
+    borderBottom: `1px solid ${theme.border}`
+  },
+  label: { fontWeight: '600', color: theme.muted, fontSize: '0.9rem' },
+  value: { fontWeight: '500', color: theme.text },
+  btnPrimary: {
+    backgroundColor: theme.primary,
+    color: 'white',
+    border: 'none',
+    padding: '12px 24px',
+    borderRadius: '8px',
+    fontWeight: '600',
+    width: '100%',
+    cursor: 'pointer',
+    marginTop: '20px'
+  },
+  btnSecondary: {
+    backgroundColor: 'transparent',
+    color: theme.muted,
+    border: `1px solid ${theme.border}`,
+    padding: '10px 20px',
+    borderRadius: '8px',
+    fontWeight: '500',
+    marginTop: '10px',
+    cursor: 'pointer',
+    width: '100%'
   }
 };
 
-  // Resize/compress base64 image
-  const resizeBase64Img = (base64, maxWidth = 400, maxHeight = 400, quality = 0.7) => {
-    return new Promise((resolve) => {
-      let img = new Image();
-      img.src = base64;
-      img.onload = () => {
-        let canvas = document.createElement("canvas");
-        let ctx = canvas.getContext("2d");
+const useCameraScanner = (onScanSuccess) => {
+  const videoRef = useRef(null);
+  const scannerRef = useRef(null);
+  const [devices, setDevices] = useState([]);
+  const [activeDeviceId, setActiveDeviceId] = useState(null);
+  const [streamError, setStreamError] = useState(null);
 
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > maxWidth) {
-            height *= maxWidth / width;
-            width = maxWidth;
-          }
-        } else {
-          if (height > maxHeight) {
-            width *= maxHeight / height;
-            height = maxHeight;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        ctx.drawImage(img, 0, 0, width, height);
-
-        resolve(canvas.toDataURL("image/jpeg", quality));
-      };
-    });
-  };
-
-  // Enumerate available cameras
   useEffect(() => {
-    const updateDevices = async () => {
+    const getDevices = async () => {
       try {
-        const allDevices = await navigator.mediaDevices.enumerateDevices();
-        const videoDevices = allDevices.filter((d) => d.kind === "videoinput");
-        setDevices(videoDevices);
+        const all = await navigator.mediaDevices.enumerateDevices();
+        const videoInput = all.filter(d => d.kind === 'videoinput');
+        setDevices(videoInput);
+        if (videoInput.length > 0) setActiveDeviceId(videoInput[0].deviceId);
+      } catch (err) {
+        setStreamError("Could not list camera devices.");
+      }
+    };
+    getDevices();
+  }, []);
 
-        const saved = localStorage.getItem("preferredCamera");
-        if (saved && videoDevices.find((d) => d.deviceId === saved)) {
-          setSelectedDeviceId(saved);
-        } else if (!selectedDeviceId && videoDevices.length > 0) {
-          setSelectedDeviceId(videoDevices[0].deviceId);
+  useEffect(() => {
+    if (!activeDeviceId) return;
+
+    let localScanner;
+    
+    const startCamera = async () => {
+      if(scannerRef.current) {
+        scannerRef.current.stop();
+        scannerRef.current.destroy();
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { deviceId: { exact: activeDeviceId }, width: 1280, height: 720 }
+        });
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          localScanner = new QrScanner(videoRef.current, (result) => {
+             if(result?.data) onScanSuccess(result.data);
+          }, { 
+            highlightScanRegion: true, 
+            highlightCodeOutline: true 
+          });
+          
+          scannerRef.current = localScanner;
+          await localScanner.start();
         }
       } catch (err) {
-        console.error("Device enumeration error:", err);
+        console.error("Camera Start Error", err);
+        setStreamError("Camera failed to start. Check permissions.");
       }
     };
 
-    updateDevices();
-    navigator.mediaDevices.ondevicechange = updateDevices;
+    startCamera();
+
     return () => {
-      navigator.mediaDevices.ondevicechange = null;
+      if (localScanner) {
+        localScanner.stop();
+        localScanner.destroy();
+      }
+      if (videoRef.current?.srcObject) {
+        videoRef.current.srcObject.getTracks().forEach(t => t.stop());
+      }
     };
-  }, [selectedDeviceId]);
+  }, [activeDeviceId, onScanSuccess]);
 
-  // Setup scanner
-useEffect(() => {
-  if (!videoRef.current || !selectedDeviceId) return;
+  const takePhoto = useCallback(() => {
+    if (!videoRef.current) return null;
+    const canvas = document.createElement("canvas");
+    canvas.width = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
+    canvas.getContext("2d").drawImage(videoRef.current, 0, 0);
+    return canvas.toDataURL("image/jpeg", 0.8);
+  }, []);
 
-  const setupScanner = async () => {
-    await stopScanner();
-
-    const scanner = new QrScanner(videoRef.current, handleScan, {
-      highlightScanRegion: true,
-      highlightCodeOutline: true,
-    });
-
-    scannerRef.current = scanner;
-
-    try {
-      // Some browsers need to "open" camera explicitly
-      await scanner.setCamera(selectedDeviceId, { facingMode: "environment" });
-      await scanner.start();
-      console.log("Scanner started for device:", selectedDeviceId);
-    } catch (err) {
-      console.error("Scanner init error:", err);
-      setAlert({ message: "Unable to start camera.", type: "error" });
-    }
-  };
-
-  setupScanner();
-  return () => stopScanner();
-}, [selectedDeviceId]);
-
-const handleCameraSwitch = async (newDeviceId) => {
-  const allDevices = await navigator.mediaDevices.enumerateDevices();
-  const videoDevices = allDevices.filter(d => d.kind === "videoinput");
-  setDevices(videoDevices);
-
-  await stopScanner();
-  localStorage.setItem("preferredCamera", newDeviceId);
-  setSelectedDeviceId(newDeviceId);
+  return { videoRef, devices, activeDeviceId, setActiveDeviceId, takePhoto, streamError };
 };
 
-  // Capture still image
-  const capturePhoto = async () => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (video && canvas) {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const rawImage = canvas.toDataURL("image/png");
-      const compressedImage = await resizeBase64Img(rawImage);
-      setCapturedImage(compressedImage);
-    }
-  };
+const StepWizard = ({ currentStep }) => (
+  <div style={styles.stepperBox}>
+    {[0, 1, 2].map(s => (
+      <div key={s} style={styles.stepDot(currentStep === s, currentStep > s)}>
+        {currentStep > s ? '✓' : s + 1}
+      </div>
+    ))}
+  </div>
+);
 
-  // Handle QR scan
-  const handleScan = async (result) => {
-    if (!result?.data || qrResult) return;
+function ProcessClaimPage() {
+  const { currentUser } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { matchId } = useParams();
+  const matchData = location.state?.match || null;
+  const matchDocId = matchId || matchData?.id;
+  const [step, setStep] = useState(0); 
+  const [loading, setLoading] = useState(false);
+  const [alert, setAlert] = useState(null);
+  const [claimantPhoto, setClaimantPhoto] = useState(null);
+  const [scannedQRData, setScannedQRData] = useState(null);
+  const [userData, setUserData] = useState(null);
+  const handleQRDetected = useCallback(async (text) => {
+    if (step !== 1) return; 
 
-    setAlert({ message: "QR Code Scanned!", type: "success" });
-
-    const text = result.data;
+  
     const tokens = text.split(/\s+/);
-
-    let fullnameParts = [];
-    let idNumber = "";
-    let courseParts = [];
-    let phase = "name";
-
-    for (let token of tokens) {
-      if (/^\d+$/.test(token)) {
-        idNumber = token;
-        phase = "course";
-      } else {
-        if (phase === "name") fullnameParts.push(token);
-        else if (phase === "course") courseParts.push(token);
-      }
+    const idNumber = tokens.find(t => /^\d+$/.test(t)); 
+    
+    if (!idNumber) {
+      setAlert({ type: 'warning', message: "QR format unrecognized. Try again." });
+      return;
     }
 
-    const parsedResult = {
-      fullname: fullnameParts.join(" "),
-      idNumber,
-      course: courseParts.join(" "),
-    };
-
-    setQrResult(parsedResult);
-
-    // Lookup user in Firestore
     try {
+      setLoading(true);
       const q = query(collection(db, "users"), where("studentId", "==", idNumber));
-      const querySnapshot = await getDocs(q);
-      if (!querySnapshot.empty) {
-        querySnapshot.forEach((docSnap) => {
-          setUserData({ id: docSnap.id, ...docSnap.data() });
-        });
+      const snap = await getDocs(q);
+      
+      if (!snap.empty) {
+        const user = snap.docs[0].data();
+        setUserData({ id: snap.docs[0].id, ...user });
+        setScannedQRData({ raw: text, idNumber });
+        setAlert({ type: 'success', message: "ID Verified Successfully!" });
+        setStep(2); 
       } else {
-        setUserData(null);
-        setAlert({ message: "No user found with this ID Number.", type: "error" });
+        setAlert({ type: 'error', message: "Student ID not found in database." });
       }
     } catch (err) {
-      console.error("Firestore fetch error:", err);
-      setAlert({ message: "Database Error Occurred.", type: "error" });
+      console.error(err);
+      setAlert({ type: 'error', message: "Database read error." });
+    } finally {
+      setLoading(false);
+    }
+  }, [step]);
+
+  const { videoRef, devices, activeDeviceId, setActiveDeviceId, takePhoto, streamError } = useCameraScanner(handleQRDetected);
+
+  const handleCapture = () => {
+    const photo = takePhoto();
+    if (photo) {
+      setClaimantPhoto(photo);
+      setStep(1);
     }
   };
 
-  // Notify user via Realtime DB
-  const notifyUser = async (uid, message) => {
+  const handleReset = () => {
+    setStep(0);
+    setClaimantPhoto(null);
+    setScannedQRData(null);
+    setUserData(null);
+  };
+
+  const sendNotification = async (uid, msg) => {
     if (!uid) return;
-    const notifRef = ref(dbRealtime, `notifications/${uid}`);
-    const newNotifRef = push(notifRef);
-    await set(newNotifRef, {
-      message,
+    const refPath = ref(getDatabase(), `notifications/${uid}`);
+    await set(push(refPath), {
+      message: msg,
       timestamp: rtdbServerTimestamp(),
       type: "transaction",
       read: false,
     });
   };
 
-  // Finalize Claim (kept your existing logic)
-  const finalizeClaim = async () => {
-    if (!matchData || !userData || !capturedImage) {
-      setAlert({ message: "Please capture a photo and scan a valid ID first.", type: "warning" });
-      return;
-    }
-
+  const finalizeTransaction = async () => {
+    if (!matchData || !userData) return;
     setLoading(true);
+
+    const transactionId = matchDocId || `TXN-${Date.now()}`;
+    const timestamp = new Date().toISOString();
+
+    const sanitize = (d) => JSON.parse(JSON.stringify(d)); 
+
+    const finalOwnerData = sanitize({
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        email: userData.email,
+        contactNumber: userData.contactNumber,
+        address: userData.address,
+        uid: userData.id,
+        idNumber: scannedQRData.idNumber
+    });
+
     try {
-    // --- Update lost item ---
-    if (matchData.lostItem?.itemId) {
-      const lostQuery = query(
-        collection(db, "lostItems"),
-        where("itemId", "==", matchData.lostItem.itemId)
-      );
-      const lostSnap = await getDocs(lostQuery);
+      const updates = [];
 
-      if (!lostSnap.empty) {
-        const lostDocId = lostSnap.docs[0].id;
-        await updateDoc(doc(db, "lostItems", lostDocId), {
-          claimStatus: "claimed",
-          foundBy: matchData.foundItem.personalInfo || null,
-        });
+      if (matchData.lostItem?.itemId) {
+        const q = query(collection(db, "lostItems"), where("itemId", "==", matchData.lostItem.itemId));
+        updates.push(getDocs(q).then(snap => {
+          if(!snap.empty) updateDoc(doc(db, "lostItems", snap.docs[0].id), { claimStatus: "claimed" });
+        }));
       }
-    }
 
-    // --- Update found item ---
-    if (matchData.foundItem?.itemId) {
-      const foundQuery = query(
-        collection(db, "foundItems"),
-        where("itemId", "==", matchData.foundItem.itemId)
-      );
-      const foundSnap = await getDocs(foundQuery);
-
-      if (!foundSnap.empty) {
-        const foundDocId = foundSnap.docs[0].id;
-        await updateDoc(doc(db, "foundItems", foundDocId), {
-          claimStatus: "claimed",
-          claimedBy: sanitizeData({
-            firstName: userData.firstName,
-            lastName: userData.lastName,
-            middleName: userData.middleName || "",
-            email: userData.email,
-            contactNumber: userData.contactNumber,
-            address: userData.address,
-            birthdate: userData.birthdate,
-            course: userData.course,
-            section: userData.section,
-            yearLevel: userData.yearLevel,
-            profileURL: userData.profileURL,
-            uid: userData.id,
-          }),
-          claimantPhoto: capturedImage,
-        });
+      if (matchData.foundItem?.itemId) {
+        const q = query(collection(db, "foundItems"), where("itemId", "==", matchData.foundItem.itemId));
+        updates.push(getDocs(q).then(snap => {
+          if(!snap.empty) {
+            updateDoc(doc(db, "foundItems", snap.docs[0].id), {
+              claimStatus: "claimed",
+              claimedBy: finalOwnerData,
+              claimantPhoto: claimantPhoto
+            });
+          }
+        }));
       }
-    }
 
-    // --- Update match record ---
-    if (matchDocId) {
-      const matchDocRef = doc(db, "matches", matchDocId);
-      await setDoc(matchDocRef, { claimStatus: "claimed" }, { merge: true });
-    }
+      const historyPayload = {
+        itemId: matchData.foundItem.itemId,
+        itemName: matchData.foundItem.itemName,
+        dateClaimed: timestamp,
+        owner: finalOwnerData,
+        claimantPhoto: claimantPhoto,
+        processedBy: currentUser?.uid
+      };
 
-    // --- Save to claimedItems ---
-    await addDoc(collection(db, "claimedItems"), {
-      itemId: matchData.foundItem.itemId,
-      images: matchData.foundItem.images,
-      itemName: matchData.foundItem.itemName || "",
-      dateClaimed: new Date().toISOString(),
-      founder: matchData.foundItem.personalInfo || null,
-      owner: sanitizeData({
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        middleName: userData.middleName || "",
-        email: userData.email,
-        contactNumber: userData.contactNumber,
-        address: userData.address,
-        birthdate: userData.birthdate,
-        course: userData.course,
-        section: userData.section,
-        yearLevel: userData.yearLevel,
-        profileURL: userData.profileURL,
-        uid: userData.id,
-      }),
-      ownerActualFace: capturedImage,
-    });
+      updates.push(addDoc(collection(db, "claimedItems"), historyPayload));
+      updates.push(addDoc(collection(db, "claimHistory"), { ...historyPayload, status: 'completed' }));
 
-    // --- Save to claimHistory ---
-    await addDoc(collection(db, "claimHistory"), {
-      itemId: matchData.foundItem.itemId,
-      itemName: matchData.foundItem.itemName || "",
-      dateClaimed: new Date().toISOString(),
-      founder: matchData.foundItem.personalInfo || null,
-      owner: sanitizeData({
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        middleName: userData.middleName || "",
-        email: userData.email,
-        contactNumber: userData.contactNumber,
-        address: userData.address,
-        birthdate: userData.birthdate,
-        course: userData.course,
-        section: userData.section,
-        yearLevel: userData.yearLevel,
-        profileURL: userData.profileURL,
-        uid: userData.id,
-      }),
-      claimantPhoto: capturedImage,
-      userAccount: currentUser?.uid || "system",
-      status: "completed",
-    });
+      if (matchDocId) {
+        updates.push(setDoc(doc(db, "matches", matchDocId), { claimStatus: "claimed" }, { merge: true }));
+      }
 
-    // --- Notifications ---
-      // Notify guest not needed, but notify founder/admin
-      await notifyUser(currentUser?.uid, `<b>Transaction ID: ${matchData.transactionId}</b> — The system has successfully processed a matching request for a lost item report. 
-      The results generated are: 
-      Image Match ${matchData.scores?.imageScore}%, 
-      Description Match ${matchData.scores?.descriptionScore}%, 
-      and an Overall Match Rate of ${matchData.scores?.overallScore}%. 
-      Please review the transaction details for further verification.`);
-    await notifyUser(matchData.lostItem?.uid, ` Hello <b>"${matchData.lostItem?.personalInfo?.firstName}"!</b>  Your lost item <b>"${matchData.lostItem?.itemName}"</b> has been successfully claimed.  
-      Please take a moment to rate your experience and help us improve the matching process.
-      `);
-    await notifyUser(matchData.foundItem?.uid, `Thank you <b>"${matchData.foundItem?.personalInfo?.firstName}"!</b>  The item you reported found <b>"${matchData.foundItem?.itemName}"</b> 
-      has been successfully claimed by its rightful owner.  
-      We appreciate your honesty and contribution. Kindly rate your experience with the process.
-      `);
+      updates.push(sendNotification(currentUser?.uid, `Transaction ${transactionId} Completed.`));
+      updates.push(sendNotification(matchData.lostItem?.uid, `Your item ${matchData.lostItem?.itemName} has been claimed.`));
 
-      try {
-                  const emailResUser = await fetch(`${API}/api/send-email`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      to: String(currentUser?.email),
-                      subject: "Transaction Processed",
-                      html: `<b>Transaction ID: ${matchData.transactionId}</b> — The system has successfully processed a matching request for a lost item report. 
-                        The results generated are: 
-                        Image Match ${matchData.scores?.imageScore}%, 
-                        Description Match ${matchData.scores?.descriptionScore}%, 
-                        and an Overall Match Rate of ${matchData.scores?.overallScore}%. 
-                        Please review the transaction details for further verification.`
-                    })
-                  });
+      await Promise.all(updates);
 
-                  const emailDataUser = await emailResUser.json();
-                  console.log("Email response for user:", emailDataUser);
+      setAlert({ type: 'success', message: "Transaction Completed!" });
+      setTimeout(() => navigate(`/admin/item-claimed-list/${currentUser?.uid}`), 1500);
 
-                  if (!emailResUser.ok) {
-                    console.error("Failed to send email to user:", emailDataUser);
-                  } else {
-                    console.log("Email successfully sent to user:", email);
-                  }
-
-                } catch (emailErrorUser) {
-                  console.error("Error sending email to user:", emailErrorUser);
-                }
-
-
-                try {
-                  const emailResUser = await fetch(`${API}/api/send-email`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      to: String(matchData.lostItem?.personalInfo?.email),
-                      subject: "Transaction Processed",
-                      html:` Hello <b>"${matchData.lostItem?.personalInfo?.firstName}"!</b>  Your lost item <b>"${matchData.lostItem?.itemName}"</b> has been successfully claimed.  
-      Please take a moment to rate your experience and help us improve the matching process.
-      `
-                    })
-                  });
-
-                  const emailDataUser = await emailResUser.json();
-                  console.log("Email response for user:", emailDataUser);
-
-                  if (!emailResUser.ok) {
-                    console.error("Failed to send email to user:", emailDataUser);
-                  } else {
-                    console.log("Email successfully sent to user:", matchData.lostItem?.personalInfo?.email);
-                  }
-
-                } catch (emailErrorUser) {
-                  console.error("Error sending email to user:", emailErrorUser);
-                }
-
-                try {
-                  const emailResUser = await fetch(`${API}/api/send-email`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      to: String(matchData.foundItem?.personalInfo?.email),
-                      subject: "Transaction Processed",
-                      html:` Hello <b>"${matchData.foundItem?.personalInfo?.firstName}"!</b>  Your lost item <b>"${matchData.foundItem?.itemName}"</b> has been successfully claimed.  
-      Please take a moment to rate your experience and help us improve the matching process.
-      `
-                    })
-                  });
-
-                  const emailDataUser = await emailResUser.json();
-                  console.log("Email response for user:", emailDataUser);
-
-                  if (!emailResUser.ok) {
-                    console.error("Failed to send email to user:", emailDataUser);
-                  } else {
-                    console.log("Email successfully sent to user:", matchData.foundItem?.personalInfo?.email);
-                  }
-
-                } catch (emailErrorUser) {
-                  console.error("Error sending email to user:", emailErrorUser);
-                }
-      setAlert({ message: "Claim finalized and emails sent!", type: "success" });
-      navigate(`/admin/item-claimed-list/${currentUser?.uid || userData.id}`);
-      window.location.reload();
-    } catch (err) {
-      console.error("Error finalizing claim:", err);
-      setAlert({ message: "Error finalizing claim.", type: "error" });
+    } catch (e) {
+      console.error(e);
+      setAlert({ type: 'error', message: "Transaction failed. Please try again." });
     } finally {
       setLoading(false);
     }
@@ -479,136 +370,110 @@ const handleCameraSwitch = async (newDeviceId) => {
   return (
     <>
       <NavigationBar />
-      <div className="process-claim-page">
-        <BlankHeader />
+      <BlankHeader />
+      
+      <div style={styles.pageWrapper}>
         {alert && <FloatingAlert message={alert.message} type={alert.type} onClose={() => setAlert(null)} />}
-        <h1 style={{ position: "absolute", top: "6%", left: "1%", color: "#475C6F" }}>Process Claim</h1>
+        
+        <div style={styles.container}>
+          <div style={styles.header}>
+            <h2>Claim Verification</h2>
+            <p style={{color: theme.muted}}>Follow the steps to verify identity and process the item return.</p>
+          </div>
 
-        {/* Camera Selector */}
-        <div style={{ position: "absolute", top: "7%", left: "25%" }}>
-          <label style={{ color: "black", fontWeight: "bold" }}>Select Camera:</label>
-          <select value={selectedDeviceId || ""} onChange={(e) => handleCameraSwitch(e.target.value)}>
-            {devices.map((device, idx) => (
-              <option key={idx} value={device.deviceId}>
-                {device.label || `Camera ${idx + 1}`}
-              </option>
-            ))}
-          </select>
-        </div>
+          <StepWizard currentStep={step} />
 
-        {/* Live Video */}
-        <div className="camera-container">
-          <video ref={videoRef} autoPlay playsInline muted />
-        </div>
-
-        <button className="capture-btn" onClick={capturePhoto}>Capture Photo</button>
-        <canvas ref={canvasRef} style={{ display: "none" }} />
-
-        {capturedImage && <div className="captured-section">
-          <img src={capturedImage} alt="Captured" style={{ width: "200px", border: "2px solid #475C6F", borderRadius: "8px" }} />
-        </div>}
-
-        {qrResult && <div className="qr-result" style={{ backgroundColor: "white", width: "270px", borderRadius: "20px", padding: "10px" }}>
-          <p>Scanned ID Info:</p>
-          <p style={{fontWeight: 'lighter'}}><b>Fullname:</b> {qrResult.fullname}</p>
-          <p style={{fontWeight: 'lighter'}}><b>ID Number:</b> {qrResult.idNumber}</p>
-          <p style={{fontWeight: 'lighter'}}><b>Course:</b> {qrResult.course}</p>
-        </div>}
-
-        {userData && <div className="qr-results" style={{ marginTop: "180px", backgroundColor: "white", width: "500px", borderRadius: "20px", padding: "10px" }}>
-          <p><b>Matched User Account:</b></p>
-                  <div style={{display: 'flex'}}>
-                    {userData.isGuest ? (
-                      <div
-                        style={{
-                          width: "50px",
-                          height: "50px",
-                          borderRadius: "40px",
-                          backgroundColor: "blue",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          color: "white",
-                          fontSize: "12px",
-                          fontWeight: "bold",
-                        }}
-                      >
-                        Guest
-                      </div>
-                    ) : userData.profileURL ? (
-                      <img
-                        src={userData.profileURL}
-                        alt="profile"
-                        style={{
-                          width: "50px",
-                          height: "50px",
-                          borderRadius: "40px",
-                          objectFit: "cover",
-                        }}
-                      />
-                    ) : (
-                      <div
-                        style={{
-                          width: "50px",
-                          height: "50px",
-                          borderRadius: "40px",
-                          backgroundColor: "navy",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          color: "white",
-                          fontSize: "14px",
-                          fontWeight: "bold",
-                        }}
-                      >
-                        {`${userData.firstName?.[0] || ""}${
-                          userData.lastName?.[0] || ""
-                        }`.toUpperCase()}
-                      </div>
-                    )}
-
-                    <p style={{marginLeft: '10px'}}>
-                      <strong style={{ fontSize: "14px" }}>
-                        {userData.isGuest === true
-                          ? userData.firstName || "Guest"
-                          : `${userData.firstName || ""} ${userData.lastName || ""}`.trim()}
-                      </strong>
-                      <br />
-                      {userData.isGuest !== true && (
-                        <span>
-                          {userData.personalInfo?.course?.name
-                            ? `${userData.personalInfo.course.name} Student`
-                            : "Unknown"}
-                        </span>
-                      )}
-                    </p>
+          <div style={styles.card}>
+            
+            {(step === 0 || step === 1) && (
+              <div style={{textAlign: 'center'}}>
+                <h4 style={{marginBottom: '20px'}}>
+                  {step === 0 ? "Step 1: Capture Photo" : "Step 2: Scan ID Badge"}
+                </h4>
+                
+                {streamError ? (
+                   <div className="alert alert-danger">{streamError}</div>
+                ) : (
+                  <div style={styles.videoWrapper}>
+                    <video ref={videoRef} autoPlay playsInline muted style={styles.video} />
+                    {step === 1 && <div style={styles.overlay}><p style={{color: 'white', marginTop: '110%', textShadow: '0 2px 4px #000'}}>Align QR Code</p></div>}
                   </div>
-          <p style={{fontWeight: 'lighter'}}><b>Email:</b> {userData.email}</p>
-          <p style={{fontWeight: 'lighter'}}><b>Course:</b> {userData.course?.abbr} | <b>Section:</b> {userData.section}</p>
-          <p style={{fontWeight: 'lighter'}}><b>Year Level:</b> {userData.yearLevel}</p>
-          <p style={{fontWeight: 'lighter'}}><b>Contact Number:</b> {userData.contactNumber}</p>
-          <p style={{fontWeight: 'lighter'}}><b>Address:</b> {userData.address}</p>
-          <p style={{fontWeight: 'lighter'}}><b>Gender:</b> {userData.gender}</p>
-          <p style={{fontWeight: 'lighter'}}><b>Birthdate:</b> {userData.birthdate}</p>
-        </div>}
+                )}
 
-        <button onClick={finalizeClaim} disabled={loading} style={{
-          position: "absolute",
-          bottom: "5%",
-          height: "50px",
-          width: "250px",
-          top: "76%",
-          left: "40%",
-          padding: "12px 25px",
-          fontSize: "18px",
-          backgroundColor: "#475C6F",
-          color: "white",
-          border: "none",
-          borderRadius: "10px",
-          cursor: loading ? "not-allowed" : "pointer",
-        }}>
-          {loading ? <Spinner animation="border" size="sm" /> : "Complete"}
-        </button>
+                <div style={{maxWidth: '300px', margin: '0 auto'}}>
+                  <select 
+                    className="form-select mb-3" 
+                    onChange={(e) => setActiveDeviceId(e.target.value)} 
+                    value={activeDeviceId || ''}
+                  >
+                    {devices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || 'Camera'}</option>)}
+                  </select>
+
+                  {step === 0 && (
+                    <button style={styles.btnPrimary} onClick={handleCapture}>
+                      Capture Claimant Photo
+                    </button>
+                  )}
+                  
+                  {step === 1 && (
+                    <p className="text-muted">Scanning for QR code automatically...</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {step === 2 && userData && (
+              <div>
+                <h4 style={{marginBottom: '25px', color: theme.success, textAlign: 'center'}}>
+                   Verification Successful
+                </h4>
+
+                <div className="row">
+                  <div className="col-md-4 text-center">
+                    <p style={styles.label}>Captured Photo</p>
+                    <img src={claimantPhoto} alt="Claimant" style={{width: '100%', borderRadius: '8px', border: '3px solid #eee'}} />
+                  </div>
+
+                  <div className="col-md-8">
+                    <div style={{backgroundColor: '#f1f3f5', padding: '20px', borderRadius: '12px'}}>
+                      <h5 style={{color: theme.primary, marginBottom: '15px'}}>{userData.firstName} {userData.lastName}</h5>
+                      
+                      <div style={styles.detailRow}>
+                        <span style={styles.label}>Student ID</span>
+                        <span style={styles.value}>{scannedQRData.idNumber}</span>
+                      </div>
+                      <div style={styles.detailRow}>
+                        <span style={styles.label}>Course / Section</span>
+                        <span style={styles.value}>{userData.course?.abbr || userData.course} - {userData.section}</span>
+                      </div>
+                      <div style={styles.detailRow}>
+                        <span style={styles.label}>Email</span>
+                        <span style={styles.value}>{userData.email}</span>
+                      </div>
+                      <div style={styles.detailRow}>
+                        <span style={styles.label}>Item Being Claimed</span>
+                        <span style={styles.value}>{matchData?.foundItem?.itemName || "Unknown Item"}</span>
+                      </div>
+                    </div>
+
+                    <button 
+                      style={{...styles.btnPrimary, opacity: loading ? 0.7 : 1}} 
+                      onClick={finalizeTransaction}
+                      disabled={loading}
+                    >
+                      {loading ? <Spinner animation="border" size="sm" /> : "Confirm & Process Claim"}
+                    </button>
+                    
+                    <button style={styles.btnSecondary} onClick={handleReset} disabled={loading}>
+                      Cancel / Start Over
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+          </div>
+        </div>
       </div>
     </>
   );

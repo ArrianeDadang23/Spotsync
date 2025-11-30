@@ -38,7 +38,6 @@ function ProfileDisplay({ personalInfo }) {
     );
   }
 
-  // If registered user
   return (
     <div style={{ 
       display: 'flex', 

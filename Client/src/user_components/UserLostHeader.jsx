@@ -312,7 +312,6 @@ const hasEmptyFields = userData
   return (
     <>
 <div className='dropdown-containers' style={{ position: 'relative', left: '-10%', zIndex: 1000 }}>
-  {/* Account dropdown */}
   {dropDown && (
     <div 
       className="account-dropdown-menu" 
@@ -406,7 +405,6 @@ const hasEmptyFields = userData
       </Modal>
 
 
-  {/* Notification dropdown */}
   {notifyPanel && (
     <div 
       className="notify-dropdown-menu" 

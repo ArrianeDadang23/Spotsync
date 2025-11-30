@@ -1,11 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
-import './styles/FeedbackChart.css';
 import { db } from '../firebase';
 import { collection, getDocs } from 'firebase/firestore';
 
 function FeedBackChart() {
-  const [ratings, setRatings] = useState({1:[],2:[],3:[],4:[],5:[]}); // only actual feedback
-  const [allRatingsCount, setAllRatingsCount] = useState({1:0,2:0,3:0,4:0,5:0}); // include null for percentage
+  const [ratings, setRatings] = useState({1:[],2:[],3:[],4:[],5:[]}); 
+  const [allRatingsCount, setAllRatingsCount] = useState({1:0,2:0,3:0,4:0,5:0}); 
   const [hoveredRating, setHoveredRating] = useState(null);
   const [hoverPos, setHoverPos] = useState({ top: 0, left: 0 });
   const [currentFeedbackIndex, setCurrentFeedbackIndex] = useState(0);
@@ -23,9 +22,9 @@ function FeedBackChart() {
       ratingsSnapshot.forEach(doc => {
         const data = doc.data();
         if(data.rating >= 1 && data.rating <= 5) {
-          tempCounts[data.rating]++; // count all for percentage
+          tempCounts[data.rating]++; 
           if(data.feedback && data.feedback.trim() !== ''){
-            tempRatings[data.rating].push(data.feedback); // only actual feedback
+            tempRatings[data.rating].push(data.feedback);
           }
         }
       });
@@ -60,21 +59,18 @@ function FeedBackChart() {
 
   const startSlideshow = (rating) => {
     const feedbacks = ratings[rating] || [];
-    if(feedbacks.length === 0) return; // only start slideshow if feedback exists
-
+    if(feedbacks.length === 0) return; 
     setCurrentFeedbackIndex(0);
     setCountdown(5);
 
     if(intervalRef.current) clearInterval(intervalRef.current);
     if(countdownRef.current) clearInterval(countdownRef.current);
 
-    // Slideshow interval
     intervalRef.current = setInterval(() => {
       setCurrentFeedbackIndex(prev => (prev + 1) % feedbacks.length);
       setCountdown(5);
     }, 5000);
 
-    // Countdown interval
     countdownRef.current = setInterval(() => {
       setCountdown(prev => (prev > 0 ? prev - 1 : 5));
     }, 1000);

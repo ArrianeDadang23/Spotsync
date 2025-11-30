@@ -1,9 +1,7 @@
-// src/components/FloatingAlert.jsx
 import React, { useEffect } from "react";
 import "./styles/FloatingAlert.css";
 
 function FloatingAlert({ message, type = "info", onClose }) {
-  // auto close after 3s
   useEffect(() => {
     const timer = setTimeout(() => {
       if (onClose) onClose();

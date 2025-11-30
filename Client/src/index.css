@@ -1,7 +1,7 @@
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  width: 95%; /* or remove width entirely */
-  min-height: 120vh; /* make it fill screen height */
+  width: 100%; 
+  min-height: 120vh;
   font-weight: 400;
   overflow-x: hidden;
   color-scheme: light dark;
@@ -17,6 +17,7 @@
 body {
   margin: 2;
   width: 100%;
-  min-height: 120vh; /* ensures body always fits screen height */
+  min-height: 120vh; 
  
 }
+

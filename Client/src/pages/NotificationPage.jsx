@@ -13,18 +13,39 @@ import {
     get, 
     runTransaction,
     push,
-    set, // <--- FIX 1: Added missing 'set' function
+    set, 
     serverTimestamp as rtdbServerTimestamp,
 } from "firebase/database";
 import { getAuth } from "firebase/auth";
+import { Modal, Button, Spinner, Form } from "react-bootstrap"; 
 
 const typeConfig = {
-  "transaction": { title: "Transaction Processed", icon: "bi-cash-stack", color: "green" },
-  "system": { title: "System Update", icon: "bi-gear-fill", color: "#007bff" },
-  "reminder": { title: "Reminder", icon: "bi-bell-fill", color: "orange" },
-  "item": { title: "Item Update", icon: "bi-info-circle", color: "#062949ff" },
+    "transaction": {
+      title: "Claim Status",
+      icon: "bi-cash-stack",
+      color: "#28a745",
+    },
+    "system": {
+      title: "System Update",
+      icon: "bi-gear-fill",
+      color: "#007bff", 
+    },
+    "reminder": {
+      title: "Action Reminder",
+      icon: "bi-bell-fill",
+      color: "orange",
+    },
+    "item": {
+      title: "Match Alert",
+      icon: "bi-info-circle",
+      color: "#143447", 
+    },
+    "user-message": { 
+      title: "Admin Reply",
+      icon: "bi-chat-dots",
+      color: "#007bff",
+    }
 };
-
 
 function ConversationPanel({ conversation, onClose, adminName, onReply, onResolve, allConversations }) {
     const [replyText, setReplyText] = useState('');
@@ -33,7 +54,7 @@ function ConversationPanel({ conversation, onClose, adminName, onReply, onResolv
     const liveConversation = liveConvosArray.find(c => c.id === conversation.id) || conversation;
     
     const messages = liveConversation.messages ? Object.entries(liveConversation.messages).map(([id, msg]) => ({ id, ...msg })) : [];
-    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [showConfirmModal, setShowConfirmModal] = useState(false); 
 
     
     messages.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
@@ -78,37 +99,42 @@ function ConversationPanel({ conversation, onClose, adminName, onReply, onResolv
         }
     };
 
-    return (
-        <div className="conversation-panel-modal-admin">
-            <div className="panel-header-admin">
-                <h3>{liveConversation.subject}</h3>
-                <span className={`status-badge status-${liveConversation.status}`}>
-                    {liveConversation.status.toUpperCase()}
-                </span>
-                <button onClick={onClose} className="close-btn-admin">
-                    &times;
-                </button>
-            </div>
-            
-            <div className="panel-user-info-admin">
-                User: <strong>{liveConversation.user.name}</strong> (UID: {liveConversation.user.uid})
-            </div>
+    const confirmAndResolve = () => {
+        onResolve(liveConversation.user.uid, liveConversation.id);
+        setShowConfirmModal(false);
+    };
 
-            <div className="chat-area-admin" id="chat-area">
-                {messages.map(msg => (
-                    <div key={msg.id} className={`chat-message-admin message-${msg.from}`}>
-                        <div className="message-bubble-admin">
-                            <strong>{msg.from === 'user' ? liveConversation.user.name : adminName}:</strong>
-                            <p dangerouslySetInnerHTML={{ __html: msg.text }} style={{color: 'black'}}/>
-                        </div>
-                        <small className="message-timestamp-admin" style={{color: 'black'}}>
-                            {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString() : '...'}
-                        </small>
-                    </div>
-                ))}
-            </div>
+    return (
+        <div className="conversation-panel-modal-admin">
+            <div className="panel-header-admin">
+                <h3>{liveConversation.subject}</h3>
+                <span className={`status-badge status-${liveConversation.status}`}>
+                    {liveConversation.status.toUpperCase()}
+                </span>
+                <button onClick={onClose} className="close-btn-admin">
+                    &times;
+                </button>
+            </div>
 
-                <div className="panel-footer-admin">
+            <div className="panel-user-info-admin">
+                User: <strong>{liveConversation.user.name}</strong> (UID: {liveConversation.user.uid.substring(0, 8)}...)
+            </div>
+
+            <div className="chat-area-admin" id="chat-area">
+                {messages.map(msg => (
+                    <div key={msg.id} className={`chat-message-admin message-${msg.from}`}>
+                        <div className="message-bubble-admin">
+                             <strong>{msg.from === 'user' ? liveConversation.user.name : adminName}:</strong>
+                            <p dangerouslySetInnerHTML={{ __html: msg.text }} style={{color: 'black'}}/>
+                         </div>
+                    <small className="message-timestamp-admin" style={{color: 'black'}}>
+                    {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString() : '...'}
+                    </small>
+                    </div>
+            ))}
+            </div>
+
+            <div className="panel-footer-admin">
                 {liveConversation.status === 'open' ? (
                     <>
                     <textarea
@@ -133,7 +159,7 @@ function ConversationPanel({ conversation, onClose, adminName, onReply, onResolv
                         Send Reply
                         </button>
                         <button
-                        onClick={() => setShowConfirmModal(true)}
+                        onClick={() => setShowConfirmModal(true)} 
                         className="resolve-btn-admin"
                         >
                         Resolve & Close
@@ -143,42 +169,34 @@ function ConversationPanel({ conversation, onClose, adminName, onReply, onResolv
                 ) : (
                     <p className="resolved-text-admin">This conversation is marked as resolved.</p>
                 )}
-                </div>
-                {showConfirmModal && (
-        <div className="confirm-modal-overlay">
-            <div className="confirm-modal">
-            <h4>Confirm Resolution</h4>
-            <p>Are you sure you want to mark this conversation as resolved and close it?</p>
-            <div className="confirm-actions">
-                <button
-                className="confirm-btn"
-                onClick={() => {
-                    onResolve(liveConversation.user.uid, liveConversation.id);
-                    setShowConfirmModal(false);
-                }}
-                >
-                Yes, Close Conversation
-                </button>
-                <button
-                className="cancel-btn"
-                onClick={() => setShowConfirmModal(false)}
-                >
-                Cancel
-                </button>
             </div>
-            </div>
-        </div>
-        )}
+            
+            <Modal show={showConfirmModal} onHide={() => setShowConfirmModal(false)} centered>
+                <Modal.Header closeButton>
+                    <Modal.Title>Confirm Resolution</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <p>Are you sure you want to mark this conversation as **resolved** and close it?</p>
+                    <p className="text-muted small">This action cannot be undone and will remove the conversation from the active list.</p>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => setShowConfirmModal(false)}>
+                        Cancel
+                    </Button>
+                    <Button variant="danger" onClick={confirmAndResolve}>
+                        Yes, Resolve & Close
+                    </Button>
+                </Modal.Footer>
+            </Modal>
 
         </div>
 
     );
 
 }
-// --- Main Admin Notification Page ---
 function NotificationPage() {
   const [groupedSystemNotifications, setGroupedSystemNotifications] = useState({});
-  const [allConversations, setAllConversations] = useState({}); // {uid: {convoId: data}}
+  const [allConversations, setAllConversations] = useState({}); 
   const [activeConversation, setActiveConversation] = useState(null);
   const [alert, setAlert] = useState(null);
   const auth = getAuth();
@@ -186,20 +204,17 @@ function NotificationPage() {
   const adminName = user ? (user.displayName || user.email) : 'Admin';
 
 
-  // --- Firebase Listeners ---
   useEffect(() => {
     if (!user) return;
     const db = getDatabase();
     const adminUid = user.uid;
     
-    // 1. System Notifications (Listen to admin's own UID)
     const systemNotifsRef = ref(db, `notifications/${adminUid}`);
     const unsubscribeSystem = onValue(systemNotifsRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
         const parsed = Object.keys(data).map((key) => ({ id: key, ...data[key] }));
         
-        // Filter out user-message types as they are handled in the conversation panel
         const systemNotifs = parsed.filter(n => n.type !== 'user-message');
 
         systemNotifs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
@@ -210,8 +225,6 @@ function NotificationPage() {
       }
     });
 
-
-    // 2. All User Conversations (Listen to the root node for ALL users)
     const allConvosRef = ref(db, `userConversations`);
     const unsubscribeConvos = onValue(allConvosRef, (snapshot) => {
         const conversationsByUid = {};
@@ -230,22 +243,20 @@ function NotificationPage() {
                                     .filter(msg => msg.from === 'user' && msg.read === false).length;
                             }
                             
-                            // FIX: Ensure mandatory fields have safe fallbacks
                             const conversationStatus = data.status || 'open';
                             const lastActivityTime = data.lastMessageAt || data.startedAt || 0;
 
                             return { 
                                 id: convoId, 
                                 unreadCount: unreadUserMessages,
-                                // FIX: Ensure user name is always available
                                 user: { uid, name: data.user?.name || `User ${uid.substring(0, 4)}` }, 
                                 status: conversationStatus,
                                 lastMessageAt: lastActivityTime,
                                 ...data 
                             };
                         })
-                        .filter(convo => convo.status === 'open') // Only show open convos in the panel
-                        .sort((a, b) => (b.lastMessageAt || 0) - (a.lastMessageAt || 0)); // Sort by recent activity
+                        .filter(convo => convo.status === 'open') 
+                        .sort((a, b) => (b.lastMessageAt || 0) - (a.lastMessageAt || 0)); 
                 }
             });
         }
@@ -259,7 +270,6 @@ function NotificationPage() {
     };
   }, [user]);
 
-  // --- Helper Functions ---
   const groupByDate = (notifications) => {
     const groups = {}; 
     const now = new Date();
@@ -284,14 +294,13 @@ function NotificationPage() {
     );
   };
 
-  // --- Conversation Actions ---
   const handleOpenConversation = (convo) => {
     setActiveConversation(convo);
   };
 
   const handleReply = async (userUid, convoId, text) => {
     const db = getDatabase();
-    const user = getAuth().currentUser; // Get Admin User for security context
+    const user = getAuth().currentUser; 
     
     if (!user) {
       setAlert({ message: "Admin authentication failed. Cannot send reply.", type: "error" });
@@ -302,21 +311,18 @@ function NotificationPage() {
     const lastMessageRef = ref(db, `userConversations/${userUid}/conversations/${convoId}`);
     
     try {
-        // 1. Push the new admin message
         const newReply = push(messagesRef);
-        await set(newReply, { // FIX: 'set' is now imported correctly
+        await set(newReply, { 
             from: 'admin',
             text: text,
             timestamp: rtdbServerTimestamp(),
             read: false, 
         });
     
-        // 2. Update the last message time on the conversation thread
         await update(lastMessageRef, {
             lastMessageAt: rtdbServerTimestamp(),
         });
     
-        // 3. Send a notification to the user who owns the thread
         const userNotifRef = ref(db, `notifications/${userUid}`);
         await push(userNotifRef, {
             from: { uid: user.uid, name: adminName },
@@ -338,7 +344,6 @@ function NotificationPage() {
     const db = getDatabase();
     
     try {
-        // 1. Decrease the openCount atomically via transaction
         await runTransaction(ref(db, `userConversations/${userUid}/metadata/openCount`), (currentCount) => {
             if (currentCount > 0) {
                 return currentCount - 1;
@@ -346,7 +351,6 @@ function NotificationPage() {
             return currentCount;
         });
     
-        // 2. Update the conversation status
         const convoStatusRef = ref(db, `userConversations/${userUid}/conversations/${convoId}`);
         await update(convoStatusRef, {
             status: 'resolved',
@@ -361,7 +365,6 @@ function NotificationPage() {
     }
   };
   
-  // Delete system notification
   const handleDelete = (notifId) => {
     if (!user) return;
     const db = getDatabase();
@@ -374,7 +377,6 @@ function NotificationPage() {
   };
 
 
-  // --- Render Logic ---
   const allOpenConvosList = Object.values(allConversations).flat()
     .sort((a, b) => (b.lastMessageAt || 0) - (a.lastMessageAt || 0));
 
@@ -397,7 +399,6 @@ function NotificationPage() {
         <BlankHeader />
         <div className="admin-notification-grid">
           
-          {/* LEFT PANE: User Conversations */}
           <div className="conversations-pane">
             <h2 className="pane-title">
                 User Conversations 
@@ -431,7 +432,6 @@ function NotificationPage() {
             </div>
           </div>
 
-          {/* RIGHT PANE: System/General Notifications */}
           <div className="system-notifications-pane">
             <h2 className="pane-title">System & Item Notifications</h2>
             
@@ -473,7 +473,6 @@ function NotificationPage() {
         </div>
       </div>
       
-      {/* Conversation Panel Modal (Slides in from the right) */}
       {activeConversation && (
         <ConversationPanel 
             allConversations={allConversations} 
@@ -485,112 +484,133 @@ function NotificationPage() {
         />
       )}
 
-      {/* Required CSS for the UI (Conceptual) */}
       <style>
       {`
         .admin-page-container {
             padding: 0px;
             padding-left: 70px;
-            width: 105%;
+            width: 100%; /* Changed from 105% to 100% for better layout */
             background-color: #f0f2f5;
             min-height: 100vh;
         }
         .admin-notification-grid {
-            display: flex;
+            display: grid; /* Changed from flex to grid for better control */
+            grid-template-columns: 1fr 1fr; /* Two equal columns */
             gap: 20px;
-            margin-top: 20px;
+            margin: 20px auto;
+            max-width: 1200px;
         }
         .conversations-pane, .system-notifications-pane {
             background-color: white;
-            margin: 20px;
+            /* margin: 20px; Removed margin since grid handles spacing */
             border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            flex: 1; 
-            overflow-y: auto;
+            padding: 25px; /* Increased padding */
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); /* Slightly heavier shadow */
+            flex: none; /* Remove flex property for grid */
+            height: 80vh; /* Set a fixed height for scrolling container */
+            overflow-y: auto; /* Enable scrolling */
         }
         .pane-title {
-            font-size: 24px;
-            font-weight: bold;
+            font-size: 26px; /* Slightly larger */
+            font-weight: 700; /* Bold */
             color: #143447;
             margin-bottom: 15px;
             padding-bottom: 10px;
-            border-bottom: 2px solid #eee;
+            border-bottom: 2px solid #007bff; /* Blue underline for emphasis */
         }
         .unread-summary-admin {
-            font-size: 16px;
-            margin-bottom: 15px;
-            color: #333;
+            font-size: 14px;
+            margin-bottom: 20px;
+            color: #666;
+            padding: 10px 0;
+            border-bottom: 1px dashed #eee;
         }
         .unread-count-text-admin {
-            color: red;
-            font-weight: bold;
+            color: #dc3545; /* Red for high visibility */
+            font-weight: 700;
         }
         .convo-list-admin {
-            /* Max height removed as pane handles overflow now */
+            display: flex;
+            flex-direction: column;
+            gap: 5px; /* Tighter spacing */
         }
         .convo-item-admin {
-            padding: 15px;
-            border: 1px solid #ddd;
+            padding: 12px;
+            border: 1px solid #e0e0e0;
             border-radius: 8px;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
             cursor: pointer;
-            transition: background-color 0.2s;
+            transition: all 0.2s ease;
         }
         .convo-item-admin:hover {
-            background-color: #f9f9f9;
+            background-color: #f0f8ff; /* Light blue on hover */
+            border-color: #007bff;
+            transform: translateY(-1px);
         }
         .unread-item-admin {
             border-left: 5px solid #143447;
             background-color: #e6f7ff;
-            font-weight: bold;
+            font-weight: 600;
         }
         .active-item-admin {
             border: 2px solid #007bff;
-            background-color: #e6f7ff;
+            background-color: #f0f8ff;
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.2);
         }
         .convo-header-admin {
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
+        .convo-subject-admin {
+            color: #143447;
+            font-size: 16px;
+        }
         .convo-badge-admin {
-            background-color: red;
+            background-color: #dc3545;
             color: white;
             border-radius: 50%;
             padding: 4px 8px;
             font-size: 12px;
-            font-weight: bold;
+            font-weight: 700;
         }
         .convo-meta-admin {
             display: block;
             margin-top: 5px;
-            font-size: 12px;
-            color: #666;
+            font-size: 11px;
+            color: #999;
         }
         .section-header-admin {
-            font-size: 16px;
+            font-size: 18px;
             font-weight: 600;
             color: #6c757d;
-            margin-top: 15px;
+            margin-top: 20px;
             margin-bottom: 10px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
         }
         .system-card-admin {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            padding: 12px;
+            padding: 15px 0; /* Vertical spacing */
             border-bottom: 1px solid #eee;
+            transition: background-color 0.2s;
+        }
+        .system-card-admin:hover {
+            background-color: #fbfbfb;
         }
         .card-content-admin {
             display: flex;
-            gap: 10px;
+            gap: 15px; /* Increased gap */
             flex: 1;
         }
         .card-text-admin {
             display: flex;
             flex-direction: column;
             flex-grow: 1;
+            font-size: 14px;
+            color: #333;
         }
         .card-actions-admin {
             display: flex;
@@ -600,61 +620,77 @@ function NotificationPage() {
         }
         .delete-btn-admin {
             background: none;
-            border: none;
+            border: 1px solid #dc3545; /* Added border */
+            border-radius: 4px;
+            padding: 4px;
             cursor: pointer;
             color: #dc3545;
+            transition: background-color 0.2s;
+        }
+        .delete-btn-admin:hover {
+            background-color: #dc3545;
+            color: white;
         }
         .empty-message-admin {
             color: #666;
-            padding: 20px 0;
+            padding: 30px 0;
             text-align: center;
+            font-style: italic;
         }
 
-        /* --- Conversation Panel Styles (Admin) --- */
+        /* --- Conversation Panel Styles (Modal) --- */
         .conversation-panel-modal-admin {
             position: fixed;
             top: 0;
             right: 0;
-            width: 400px; 
+            width: 450px; /* Wider panel */
             height: 100vh;
             background-color: white;
-            box-shadow: -5px 0 15px rgba(0,0,0,0.2);
+            box-shadow: -8px 0 20px rgba(0,0,0,0.3);
             z-index: 1000;
             display: flex;
             flex-direction: column;
-            transition: transform 0.3s ease-out; /* Enable slide animation */
+            transition: transform 0.3s ease-out; 
+            border-left: 1px solid #ddd;
         }
         .panel-header-admin {
-            padding: 15px;
-            border-bottom: 1px solid #eee;
+            padding: 15px 20px;
+            border-bottom: 1px solid #007bff;
             display: flex;
             gap: 15px;
             justify-content: space-between;
             align-items: center;
-            background-color: #143447;
+            background-color: #007bff; /* Primary blue header */
         }
         .panel-header-admin h3 {
             margin: 0;
             font-size: 18px;
             color: white;
+            font-weight: 600;
             flex: 1;
         }
+        .panel-header-admin .close-btn-admin {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+        }
         .panel-user-info-admin {
-            padding: 10px 15px;
+            padding: 10px 20px;
             background-color: #f4f7f9;
             font-size: 14px;
+            color: #333;
             border-bottom: 1px solid #eee;
         }
         .chat-area-admin {
             flex-grow: 1;
-            padding: 15px;
+            padding: 20px;
             overflow-y: auto;
             background-color: #f8f8f8;
         }
         .chat-message-admin {
-            margin-bottom: 10px;
-            display: flex;
-            flex-direction: column;
+            margin-bottom: 15px; /* Increased margin */
         }
         .message-user {
             align-items: flex-end;
@@ -663,31 +699,37 @@ function NotificationPage() {
             align-items: flex-start;
         }
         .message-bubble-admin {
-            max-width: 80%;
-            padding: 10px;
-            border-radius: 15px;
+            max-width: 85%;
+            padding: 12px;
+            border-radius: 18px; /* Rounded bubbles */
             line-height: 1.4;
-            box-shadow: 0 1px 1px rgba(0,0,0,0.05);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .message-user .message-bubble-admin {
             background-color: #e0f7fa; /* User message color */
-            color: #000000;
+            color: #143447;
+            border-bottom-right-radius: 4px;
         }
         .message-admin .message-bubble-admin {
             background-color: #ffffff; /* Admin message color */
-            border: 1px solid #eee;
+            color: #333;
+            border: 1px solid #ddd;
+            border-bottom-left-radius: 4px;
         }
         .message-timestamp-admin {
             font-size: 10px;
-            margin-top: 2px;
+            margin-top: 4px;
             color: #999;
         }
         .panel-footer-admin {
             padding: 15px;
-            border-top: 1px solid #eee;
+            border-top: 1px solid #ddd;
+            background-color: white;
         }
         .reply-input-admin {
             width: 100%;
             background-color: #f4f7f9;
-            color: black;
+            color: #333;
             padding: 10px;
             border: 1px solid #ccc;
             border-radius: 8px;
@@ -696,29 +738,35 @@ function NotificationPage() {
         }
         .reply-actions-admin {
             display: flex;
-            justify-content: space-between;
+            gap: 10px;
+        }
+        .reply-btn-admin, .resolve-btn-admin {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.2s;
         }
         .reply-btn-admin {
             background-color: #143447;
             color: white;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
+            flex-grow: 1;
         }
         .resolve-btn-admin {
             background-color: #dc3545;
             color: white;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
+        }
+        .resolved-text-admin {
+            color: #28a745;
+            font-style: italic;
+            text-align: center;
         }
         .status-badge {
             font-size: 12px;
             padding: 4px 8px;
             border-radius: 4px;
-            font-weight: bold;
+            font-weight: 700;
         }
         .status-open {
             background-color: #ffc107;
@@ -728,79 +776,7 @@ function NotificationPage() {
             background-color: #28a745;
             color: white;
         }
-            .confirm-modal-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.4);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 2000;
-        }
-
-        .confirm-modal {
-        background: #fff;
-        padding: 25px;
-        border-radius: 12px;
-        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
-        width: 350px;
-        text-align: center;
-        animation: fadeIn 0.3s ease;
-        }
-
-        .confirm-modal h4 {
-        color: #143447;
-        margin-bottom: 10px;
-        }
-
-        .confirm-modal p {
-        color: #333;
-        font-size: 14px;
-        margin-bottom: 20px;
-        }
-
-        .confirm-actions {
-        display: flex;
-        justify-content: space-around;
-        gap: 10px;
-        }
-
-        .confirm-btn {
-        background-color: #28a745;
-        color: white;
-        padding: 10px 15px;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        transition: 0.2s ease;
-        }
-
-        .confirm-btn:hover {
-        background-color: #218838;
-        }
-
-        .cancel-btn {
-        background-color: #dc3545;
-        color: white;
-        padding: 10px 15px;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        transition: 0.2s ease;
-        }
-
-        .cancel-btn:hover {
-        background-color: #c82333;
-        }
-
-        @keyframes fadeIn {
-        from { opacity: 0; transform: scale(0.9); }
-        to { opacity: 1; transform: scale(1); }
-        }
-
+        /* Confirmation Modal styles remain the same */
       `}
       </style>
     </>

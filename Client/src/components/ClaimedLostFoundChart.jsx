@@ -1,15 +1,13 @@
 import React, { useEffect, useState } from "react";
 import Chart from "react-apexcharts";
-import "./styles/ClaimedLostFound.css";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
 
 function ClaimedLostFoundChart() {
   const [series, setSeries] = useState([]);
-  const [loading, setLoading] = useState(true); // added loading state
+  const [loading, setLoading] = useState(true); 
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-  // helper: count by month
   const getMonthlyCounts = (items, type = "found", year = new Date().getFullYear()) => {
     const counts = Array(12).fill(0);
 
@@ -38,17 +36,14 @@ function ClaimedLostFoundChart() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setLoading(true); // start loading
+        setLoading(true); 
 
-        // Found Items
         const foundSnap = await getDocs(collection(db, "foundItems"));
         const foundItems = foundSnap.docs.map((doc) => doc.data());
 
-        // Lost Items
         const lostSnap = await getDocs(collection(db, "lostItems"));
         const lostItems = lostSnap.docs.map((doc) => doc.data());
 
-        // Claimed (from lost items)
         const claimedItems = lostItems.filter(
           (item) => item.claimStatus === "claimed"
         );
@@ -71,16 +66,16 @@ function ClaimedLostFoundChart() {
           },
         ]);
 
-        setLoading(false); // finish loading
+        setLoading(false);
       } catch (err) {
         console.error("Error fetching chart data:", err);
-        setLoading(false); // stop loading even if error
+        setLoading(false); 
       }
     };
 
     fetchData();
 
-    const interval = setInterval(fetchData, 24 * 60 * 60 * 1000); // refresh every 24h
+    const interval = setInterval(fetchData, 24 * 60 * 60 * 1000); 
     return () => clearInterval(interval);
   }, []);
 
@@ -126,7 +121,7 @@ function ClaimedLostFoundChart() {
   };
 
   return (
-    <div className="body" style={{ position: "relative", height: "300px" }}>
+    <div className="body" style={{height: '100%'}}>
       {loading ? (
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
           <img src="/Spin_black.gif" alt="Loading..." style={{ width: "40px", height: "40px" }} />

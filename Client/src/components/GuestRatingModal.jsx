@@ -11,12 +11,12 @@ export default function GuestRatingModal({ onClose }) {
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false); // ✅ loading state
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async () => {
     if (rating === 0) return alert("Please select a rating before submitting.");
-    setLoading(true); // show spinner
+    setLoading(true);
 
     try {
       await addDoc(collection(db, "ratings"), {
@@ -28,8 +28,6 @@ export default function GuestRatingModal({ onClose }) {
       });
 
       setSubmitted(true);
-
-      // Wait 1.5 sec then close and redirect
       setTimeout(() => {
         setLoading(false);
         onClose();
@@ -52,7 +50,6 @@ export default function GuestRatingModal({ onClose }) {
             : "Rate our matching!"}
         </h2>
 
-        {/* Spinner when loading */}
         {loading ? (
           <div style={{ textAlign: "center", marginTop: "20px" }}>
             <img
@@ -63,7 +60,6 @@ export default function GuestRatingModal({ onClose }) {
           </div>
         ) : !submitted ? (
           <>
-            {/* ⭐ Star rating */}
             <div className="stars-container">
               {[1, 2, 3, 4, 5].map((star) => (
                 <span
@@ -76,7 +72,6 @@ export default function GuestRatingModal({ onClose }) {
               ))}
             </div>
 
-            {/* 📝 Feedback box */}
             <textarea
               placeholder="Tell us what you think (optional)"
               value={feedback}
@@ -95,7 +90,6 @@ export default function GuestRatingModal({ onClose }) {
               }}
             />
 
-            {/* ✅ Submit button */}
             <button
               onClick={handleSubmit}
               disabled={loading}

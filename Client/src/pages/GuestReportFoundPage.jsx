@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import '../user_pages/styles/UserFoundItemDetailPage.css';
 import { db, auth } from '../firebase'; 
 import { addDoc, collection, doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
@@ -13,15 +12,13 @@ const CHECKING_SHORT = "Scanning...";
 const INAPPROPRIATE_ALERT_TITLE = "Inappropriate Content Detected";
 const INAPPROPRIATE_ALERT_MESSAGE = (flaggedCount) => 
   `${flaggedCount} image(s) were flagged for potentially inappropriate content (e.g., nudity, violence, self-harm, hate speech) and were not added. Please upload appropriate images.`;
-const MAX_IMAGES = 1; // 👈 *** SET TO 1 ***
+const MAX_IMAGES = 1;
 
 function GuestReportFoundPage() {
- const API = "https://localhost:4000"; 
- //const API = "https://server.spotsync.site";
+ const API = "https://server.spotsync.site";
   const { currentUser } = useAuth();
   const navigate = useNavigate();
-
-  co [itemName, setItemName] = useState('');
+  const [itemName, setItemName] = useState('');
   const [dateFound, setDateFound] = useState('');
   const [locationFound, setLocationFound] = useState('');
   const [category, setCategory] = useState('');
@@ -33,37 +30,27 @@ function GuestReportFoundPage() {
   const [section, setSection] = useState('Guest');
   const [yearLevel, setYearLevel] = useState('Guest');
   const [birthdate, setBirthdate] = useState('Guest');
-  
-  // --- UPDATED IMAGE STATE ---
-  const [images, setImages] = useState(null); // Actual files for upload
-  const [imagesWithMetadata, setImagesWithMetadata] = useState([]); // For preview URLs
-  
-  // --- NEW MODERATION STATE ---
+  const [images, setImages] = useState(null); 
+  const [imagesWithMetadata, setImagesWithMetadata] = useState([]); 
   const [isModerating, setIsModerating] = useState(false);
-
   const [founder, setFounder] = useState('Guest');  
   const [owner] = useState('Unknown');             
   const [claimStatus] = useState('unclaimed');
-
   const [firstName, setFirstName] = useState('Guest');
   const [lastName, setLastName] = useState('Guest');
   const [middleName, setMiddleName] = useState('Guest');
   const [email, setEmail] = useState('');
   const [contactNumber, setContactNumber] = useState('Guest');
   const [address, setAddress] = useState('Guest');
-
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isMatching, setIsMatching] = useState(false);
-
+  const [progress, setProgress] = useState(0); 
   const dbRealtime = getDatabase();
-
-      const [showLocationDropdown, setShowLocationDropdown] = useState(false);
-    const [filteredLocations, setFilteredLocations] = useState([]);
+  const [showLocationDropdown, setShowLocationDropdown] = useState(false);
+  const [filteredLocations, setFilteredLocations] = useState([]);
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [filteredCategories, setFilteredCategories] = useState([]);
   
-    const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
-    const [filteredCategories, setFilteredCategories] = useState([]);
-  
-    // Lists
     const LOCATIONS = [
       "Arts and Culture Building",
       "Guidance and Testing Center",
@@ -151,7 +138,7 @@ function GuestReportFoundPage() {
   const fetchGuestInfo = async () => {
     try {
       const user = auth.currentUser;
-      if (!user) return; // not logged in
+      if (!user) return; 
 
       const userRef = doc(db, "users", user.uid);
       const userSnap = await getDoc(userRef);
@@ -160,7 +147,7 @@ function GuestReportFoundPage() {
         const userData = userSnap.data();
         console.log("Fetched guest user data:", userData);
 
-        setEmail(userData.email || "");  // <-- fetch the guest email
+        setEmail(userData.email || ""); 
         setFirstName(userData.firstName || "Guest");
         setLastName(userData.lastName || "Guest");
         setFounder(`${userData.firstName || "Guest"} ${userData.lastName || ""}`);
@@ -176,16 +163,14 @@ function GuestReportFoundPage() {
 }, []);
 
 
-  // --- NEW MODERATION FUNCTION ---
   const checkImageModeration = async (file)  => {
-      // 1. Convert File to Base64
       const fileReader = new FileReader();
       const base64Promise = new Promise((resolve, reject) => {
         fileReader.onload = () => resolve(fileReader.result);
         fileReader.onerror = () => reject(new Error("Failed to read file."));
       });
       fileReader.readAsDataURL(file);
-      const base64Data = (await base64Promise).split(',')[1]; // Get only the base64 part
+      const base64Data = (await base64Promise).split(',')[1]; 
   
       try {
         const response = await fetch(`${API}/api/moderate-image`, {
@@ -200,23 +185,20 @@ function GuestReportFoundPage() {
           throw new Error(errorData.error || `Moderation check failed on backend (${response.status})`);
         }
   
-        const data = await response.json(); // Expecting { isSafe: boolean }
+        const data = await response.json(); 
         return data.isSafe;
   
       } catch (error) {
         console.error("Error calling backend for moderation:", error);
-        // Fallback: If the moderation service fails, we block the image as a safety measure.
         return false; 
       }
   };
 
 
-  // --- UPDATED IMAGE CHANGE HANDLER ---
   const handleImageChange = async (e) => {
       const files = e.target.files;
       if (!files || files.length === 0) return;
 
-      // Since MAX_IMAGES is 1, we only take the first file.
       const file = files[0];
 
       const currentImageCount = imagesWithMetadata.length;
@@ -242,8 +224,6 @@ function GuestReportFoundPage() {
               alert(`${INAPPROPRIATE_ALERT_TITLE}\n\n${INAPPROPRIATE_ALERT_MESSAGE(flaggedCount)}`);
           }
 
-          // Add safe images to the state
-          // Since MAX_IMAGES is 1, we replace instead of add.
           setImages(newImages);
           setImagesWithMetadata(newImages.map(file => ({ file, url: URL.createObjectURL(file) })));
 
@@ -256,11 +236,8 @@ function GuestReportFoundPage() {
       }
   };
 
-  // --- NEW FUNCTION TO REMOVE IMAGE ---
   const removeImage = (indexToRemove) => {
-      // Remove from the file list (images)
       setImages(prevImages => prevImages.filter((_, index) => index !== indexToRemove));
-      // Remove from the preview list (imagesWithMetadata)
       setImagesWithMetadata(prevMeta => prevMeta.filter((_, index) => index !== indexToRemove));
   };
 
@@ -297,7 +274,6 @@ function GuestReportFoundPage() {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // --- NEW MODERATION CHECK ---
     if (isModerating) {
         alert("Image scanning is still in progress. Please wait.");
         setIsSubmitting(false);
@@ -314,14 +290,13 @@ function GuestReportFoundPage() {
 
       if (!user) {
         alert("You must be signed in as a guest or user to submit.");
-        setIsSubmitting(false); // Stop submission
+        setIsSubmitting(false); 
         return;
       }
 
       const uid = user.uid; 
       const imageURLs = [];
 
-      // Use the moderated 'images' state
       for (let i = 0; i < images.length; i++) {
         const url = await uploadFoundItemImage(images[i], `found-items/${uid}`);
         imageURLs.push(url);
@@ -370,14 +345,22 @@ function GuestReportFoundPage() {
           body: JSON.stringify({ uidFound: docRef.id }),
         });
 
-        if (!matchResponse.ok) throw new Error("Matching failed");
+        if (!matchResponse.ok) {
+            let errorBody;
+            try {
+                errorBody = await matchResponse.json();
+            } catch (e) {
+                throw new Error(`Matching failed: Server responded with status ${matchResponse.status}.`);
+            }
+            throw new Error(errorBody.error || "Matching failed due to a server error.");
+        }
         const matches = await matchResponse.json();
-        const top4Matches = matches.slice(0, 4); // Keep this, even if unused, for consistency
+        const top4Matches = matches.slice(0, 4); 
 
         await notifyUser(
           currentUser.uid,
           `Hello <b>${firstName}</b> Your found item <b>${itemName}</b> has been submitted. 
-            Please surrender it to the OSA for verification. The item is currently on a pending status  for 24 hours and Once verified, 
+            Please surrender it to the OSA for verification. The item is currently on a pending status for 24 hours and once verified, 
             the system will notify possible owners and post the item.`
         );
 
@@ -444,22 +427,285 @@ function GuestReportFoundPage() {
     setIsMatching(false);
   };
 
+  const formStyles = {
+    mainContainer: {
+        minHeight: '100vh',
+        backgroundColor: '#f8f8f8',
+        padding: '40px 0',
+        fontFamily: 'Arial, sans-serif',
+        display: 'flex',
+        justifyContent: 'center',
+    },
+    formBody: {
+        width: '90%',
+        maxWidth: '700px',
+        backgroundColor: 'white',
+        borderRadius: '16px',
+        boxShadow: '0 8px 16px rgba(0, 0, 0, 0.1)',
+        padding: '30px',
+        boxSizing: 'border-box',
+    },
+    heading: {
+        color: '#475C6F',
+        marginBottom: '25px',
+        textAlign: 'center',
+        fontSize: '28px',
+        fontWeight: '700',
+        borderBottom: '2px solid #BDDDFC',
+        paddingBottom: '10px',
+    },
+    imageUploadBox: {
+        marginBottom: '30px',
+        border: '1px solid #e0e0e0',
+        padding: '20px',
+        borderRadius: '10px',
+        backgroundColor: '#fafafa',
+    },
+    imageFlexContainer: {
+        display: 'flex', 
+        flexWrap: 'wrap', 
+        gap: '15px', 
+        marginBottom: '10px',
+    },
+    imagePreview: {
+        position: 'relative', 
+        width: '100px', 
+        height: '100px',
+        borderRadius: '8px',
+        overflow: 'hidden',
+        border: '1px solid #ccc',
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
+    },
+    removeImageButton: {
+        position: 'absolute', 
+        top: '-10px', 
+        right: '-10px', 
+        background: '#e74c3c', 
+        color: 'white', 
+        border: '3px solid white', 
+        borderRadius: '50%', 
+        width: '28px', 
+        height: '28px', 
+        cursor: 'pointer', 
+        fontWeight: 'bold',
+        fontSize: '18px',
+        lineHeight: '1',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 0,
+    },
+    addImageLabel: {
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        width: '100px', 
+        height: '100px', 
+        border: '2px dashed #475C6F', 
+        borderRadius: '8px', 
+        cursor: 'pointer',
+        backgroundColor: 'white',
+        color: '#475C6F',
+        fontSize: '14px',
+        transition: 'background-color 0.2s',
+        textAlign: 'center',
+    },
+    imageHint: {
+        fontSize: '12px', 
+        color: '#777', 
+        textAlign: 'center', 
+        marginTop: '10px'
+    },
+    inputField: {
+        width: '100%', 
+        height: '45px',
+        padding: '0 15px',
+        margin: '10px 0',
+        border: '1px solid #ccc',
+        borderRadius: '8px',
+        fontSize: '16px',
+        color: '#475C6F',
+        backgroundColor: 'white',
+        boxSizing: 'border-box',
+        transition: 'border-color 0.2s',
+    },
+    threeInputsContainer: {
+        display: 'flex', 
+        gap: '10px', 
+        marginBottom: '10px',
+        alignItems: 'center',
+    },
+    dateInput: {
+      flex: '0 0 30%', 
+      height: '45px',
+      padding: '0 15px',
+      border: '1px solid #ccc',
+      borderRadius: '8px',
+      fontSize: '16px',
+      color: '#333',
+      boxSizing: 'border-box',
+      WebkitAppearance: 'none',
+      backgroundColor: 'white',
+    },
+    dropdownWrapper: {
+        position: 'relative', 
+        flex: '1',
+    },
+    dropdownInput: {
+        width: '100%',
+        height: '45px',
+        padding: '0 15px',
+        border: '1px solid #ccc',
+        borderRadius: '8px',
+        fontSize: '16px',
+        color: '#475C6F',
+        backgroundColor: 'white',
+        boxSizing: 'border-box',
+        cursor: 'pointer',
+    },
+    dropdownMenu: {
+        position: 'absolute',
+        top: '48px',
+        left: 0,
+        width: '100%',
+        backgroundColor: 'white',
+        border: '1px solid #ddd',
+        borderRadius: '8px',
+        maxHeight: '200px',
+        overflowY: 'auto',
+        zIndex: 9999,
+        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+    },
+    dropdownItem: {
+        padding: '10px 15px',
+        cursor: 'pointer',
+        borderBottom: '1px solid #eee',
+        transition: 'background-color 0.1s',
+    },
+    textareaContainer: {
+      position: 'relative',
+      marginBottom: '25px',
+    },
+    textareaField: {
+        width: '100%',
+        minHeight: '120px',
+        padding: '15px',
+        border: '1px solid #ccc',
+        borderRadius: '8px',
+        fontSize: '16px',
+        color: '#475C6F',
+        resize: 'vertical',
+        boxSizing: 'border-box',
+        backgroundColor: 'white',
+    },
+    wordCount: {
+      position: 'absolute', 
+      bottom: '10px', 
+      right: '15px', 
+      fontSize: '12px', 
+      color: '#777',
+      backgroundColor: 'white',
+      padding: '2px 5px',
+      borderRadius: '4px',
+    },
+    submitButton: {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "10px",
+        backgroundColor: "#475C6F", 
+        color: "white",
+        padding: "12px 30px",
+        border: "none",
+        borderRadius: "10px",
+        cursor: "pointer",
+        fontSize: "17px",
+        fontWeight: "600",
+        marginTop: "30px",
+        width: '100%',
+        transition: 'background-color 0.2s, opacity 0.2s',
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+    },
+    disabledButton: {
+        opacity: 0.6,
+        cursor: "not-allowed",
+    },
+    matchingOverlay: {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 10000,
+    },
+    matchingContent: {
+      backgroundColor: 'white',
+      padding: '30px 40px',
+      borderRadius: '12px',
+      textAlign: 'center',
+      boxShadow: '0 0 20px rgba(0, 0, 0, 0.2)',
+    },
+    matchingText: {
+      fontSize: '18px',
+      fontWeight: '600',
+      color: '#475C6F',
+      marginBottom: '15px',
+    },
+    progressContainer: {
+      width: '250px',
+      height: '10px',
+      backgroundColor: '#e0e0e0',
+      borderRadius: '5px',
+      overflow: 'hidden',
+      margin: '0 auto 10px auto',
+    },
+    progressBar: {
+      height: '100%',
+      backgroundColor: '#BDDDFC',
+      transition: 'width 0.5s ease-in-out',
+    },
+    progressPercentage: {
+      fontSize: '14px',
+      color: '#475C6F',
+    }
+  };
+
+
   return (
       <>
-      <div className='background1' style={{position: 'absolute', width: '100%', height: '120vh', backgroundColor: 'white', backgroundImage: 'url(/landing-page-img.png)', backgroundSize: 'cover', backgroundPosition: 'center'}}>
-        <div className="user-found-procedure-body" >
-          <h1>Report Found Form</h1>
+      <Header />
+      {isMatching && (
+        <div style={formStyles.matchingOverlay}>
+          <div style={formStyles.matchingContent}>
+            <img src="/Spin_black.gif" alt="Scanning" style={{ width: '60px', height: '60px', marginBottom: '20px', filter: 'invert(1)' }} />
+            <div style={formStyles.matchingText}>AI Matching...</div>
+            <div style={formStyles.progressContainer}>
+              <div style={{ ...formStyles.progressBar, width: `${progress}%` }}></div>
+            </div>
+            <div style={formStyles.progressPercentage}>{Math.round(progress)}%</div>
+          </div>
+        </div>
+      )}
+
+      <div style={formStyles.mainContainer}>
+        <div style={formStyles.formBody}>
+          <h1 style={formStyles.heading}>Guest Report Found Form</h1>
           
-          {/* --- UPDATED IMAGE UPLOAD AND PREVIEW SECTION --- */}
-          <div style={{ marginBottom: '20px', border: '2px solid #475C6F', padding: '10px', borderRadius: '8px' }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
+          <div style={formStyles.imageUploadBox}>
+              <div style={{fontWeight: '600', color: '#475C6F', marginBottom: '10px'}}>Item Photo (Max {MAX_IMAGES})</div>
+              <div style={formStyles.imageFlexContainer}>
                   {imagesWithMetadata.map((img, index) => (
-                      <div key={index} style={{ position: 'relative', width: '100px', height: '100px' }}>
-                          <img src={img.url} alt="Item Preview" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '4px' }} />
+                      <div key={index} style={formStyles.imagePreview}>
+                          <img src={img.url} alt="Item Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           <button 
                               type="button" 
                               onClick={() => removeImage(index)} 
-                              style={{ position: 'absolute', top: '-10px', right: '-10px', background: 'red', color: 'white', border: 'none', borderRadius: '50%', width: '25px', height: '25px', cursor: 'pointer', fontWeight: 'bold' }}
+                              style={formStyles.removeImageButton}
                           >
                               &times;
                           </button>
@@ -467,27 +713,23 @@ function GuestReportFoundPage() {
                   ))}
                   {imagesWithMetadata.length < MAX_IMAGES && (
                       <label style={{ 
-                          display: 'flex', 
-                          flexDirection: 'column', 
-                          alignItems: 'center', 
-                          justifyContent: 'center', 
-                          width: '100px', 
-                          height: '100px', 
-                          border: '2px dashed #475C6F', 
-                          borderRadius: '4px', 
+                          ...formStyles.addImageLabel,
                           cursor: isModerating ? 'not-allowed' : 'pointer',
                           backgroundColor: isModerating ? '#f0f0f0' : 'white',
                           opacity: isModerating ? 0.6 : 1,
-                          fontSize: '12px'
-                      }}>
+                      }}
+                      onMouseEnter={(e) => isModerating ? null : e.currentTarget.style.backgroundColor = '#f4f4f4'}
+                      onMouseLeave={(e) => isModerating ? null : e.currentTarget.style.backgroundColor = 'white'}
+                      >
                           {isModerating ? (
                               <>
-                                  <img src="/Spin_black.gif" alt="Loading..." style={{ width: "20px", height: "20px" }} />
+                                  <img src="/Spin_black.gif" alt="Loading..." style={{ width: "20px", height: "20px", filter: 'invert(1)' }} />
                                   <span>{CHECKING_SHORT}</span>
                               </>
                           ) : (
                               <>
-                                  <span>+ Add Image</span>
+                                  <span style={{fontSize: '24px', lineHeight: '1'}}><i className="fa fa-plus"></i>+</span>
+                                  <span>Add Image</span>
                               </>
                           )}
                           <input
@@ -501,265 +743,205 @@ function GuestReportFoundPage() {
                       </label>
                   )}
               </div>
-              <div style={{ fontSize: '12px', color: '#475C6F', textAlign: 'center' }}>
+              <div style={formStyles.imageHint}>
                 Image content is scanned for inappropriate material.
               </div>
           </div>
-          {/* --- END UPDATED IMAGE UPLOAD SECTION --- */}
           
-          {/* --- FORM WITH ID --- */}
-          <form className="lost-item-form" onSubmit={handleSubmit} id="guest-found-form">
-            {/* <input className='file' type="file" multiple accept="image/*" onChange={handleImageChange} style={{ width: '98%', border: '2px solid #475C6F'}} required /> */}
-            {/* <br /> */}
-          <input
-            type="text"
-            value={itemName}
-            placeholder="Item Name"
-            onChange={(e) => {
-              const words = e.target.value.trim().split(/\s+/);
-              if (words.length <= 5) {
-                setItemName(e.target.value);
-              } else {
-                setItemName(words.slice(0, 5).join(" "));
-              }
-            }}
-            style={{width: "98%"}}
-            required
-          />       
-          <div className='three-inputs' style={{width: '100%', height: '35px'}}>
+          <form onSubmit={handleSubmit} id="guest-found-form">
+            <input
+              type="text"
+              value={itemName}
+              placeholder="Item Name (Max 5 words)"
+              onChange={(e) => {
+                const words = e.target.value.trim().split(/\s+/);
+                if (words.length <= 5) {
+                  setItemName(e.target.value);
+                } else {
+                   if (e.target.value.length < itemName.length) {
+                    setItemName(e.target.value);
+                  } else {
+                    setItemName(words.slice(0, 5).join(" "));
+                  }
+                }
+              }}
+              style={formStyles.inputField}
+              required
+            />       
+          <div style={formStyles.threeInputsContainer}>
             <input
               type="date"
               value={dateFound}
               onChange={(e) => setDateFound(e.target.value)}
-              style={{
-                width: '30%',
-                color: '#475C6F',
-                WebkitAppearance: 'none',
-                marginRight: '10px'
-                , height: '35px'
-              }}
+              style={formStyles.dateInput}
               required
             />          
-<div style={{ position: "relative", marginRight: '40px'}}>
-  <input
-    type="text"
-    value={locationFound}
-    onChange={(e) => {
-      const inputValue = e.target.value;
-      setLocationFound(inputValue);
-      setFilteredLocations(
-        LOCATIONS.filter((loc) =>
-          loc.toLowerCase().includes(inputValue.toLowerCase())
-        )
-      );
-    }}
-    onFocus={() => {
-      setFilteredLocations(LOCATIONS);
-      setShowLocationDropdown(true);
-    }}
-    onBlur={() => setTimeout(() => setShowLocationDropdown(false), 150)}
-    placeholder="Type or select location"
-    style={{
-      width: "100%",
-      height: "35px",
-      borderRadius: "8px",
-      border: "2px solid #475C6F",
-      color: "#475C6F",
-      backgroundColor: "white",
-      padding: "5px",
-    }}
-    required
-  />
 
-  {showLocationDropdown && (
-    <div
-      style={{
-        position: "absolute",
-        top: "38px",
-        left: 0,
-        width: "100%",
-        backgroundColor: "white",
-        border: "1px solid #ccc",
-        borderRadius: "8px",
-        maxHeight: "150px",
-        overflowY: "auto",
-        zIndex: 9999,
-      }}
-    >
-      {filteredLocations.length > 0 ? (
-        filteredLocations.map((loc) => (
-          <div
-            key={loc}
-            onClick={() => {
-              setLocationFound(loc);
-              setShowLocationDropdown(false);
-            }}
-            style={{
-              padding: "8px",
-              cursor: "pointer",
-              borderBottom: "1px solid #eee",
-            }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.background = "#f0f0f0")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.background = "white")
-            }
-          >
-            {loc}
-          </div>
-        ))
-      ) : (
-        <div style={{ padding: "8px", color: "#888" }}>No match found</div>
-      )}
-    </div>
-  )}
-</div>
+            <div style={formStyles.dropdownWrapper}>
+              <input
+                type="text"
+                value={locationFound}
+                onChange={(e) => {
+                  const inputValue = e.target.value;
+                  setLocationFound(inputValue);
+                  setFilteredLocations(
+                    LOCATIONS.filter((loc) =>
+                      loc.toLowerCase().includes(inputValue.toLowerCase())
+                    )
+                  );
+                }}
+                onFocus={() => {
+                  setFilteredLocations(LOCATIONS);
+                  setShowLocationDropdown(true);
+                }}
+                onBlur={() => setTimeout(() => setShowLocationDropdown(false), 150)}
+                placeholder="Location Found"
+                style={formStyles.dropdownInput}
+                required
+              />
 
-{/* CATEGORY INPUT WITH TYPE + DROPDOWN */}
-<div style={{ position: "relative", width: "26%", marginRight: "10px" }}>
-  <input
-    type="text"
-    value={category}
-    onChange={(e) => {
-      const inputValue = e.target.value;
-      setCategory(inputValue);
-      setFilteredCategories(
-        CATEGORIES.filter((cat) =>
-          cat.toLowerCase().includes(inputValue.toLowerCase())
-        )
-      );
-    }}
-    onFocus={() => {
-      setFilteredCategories(CATEGORIES);
-      setShowCategoryDropdown(true);
-    }}
-    onBlur={() => setTimeout(() => setShowCategoryDropdown(false), 150)}
-    placeholder="Type or select category"
-    style={{
-      width: "100%",
-      height: "35px",
-      borderRadius: "8px",
-      border: "2px solid #475C6F",
-      color: "#475C6F",
-      backgroundColor: "white",
-      padding: "5px",
-    }}
-    required
-  />
+              {showLocationDropdown && (
+                <div style={formStyles.dropdownMenu}>
+                  {filteredLocations.length > 0 ? (
+                    filteredLocations.map((loc) => (
+                      <div
+                        key={loc}
+                        onClick={() => {
+                          setLocationFound(loc);
+                          setShowLocationDropdown(false);
+                        }}
+                        style={formStyles.dropdownItem}
+                        onMouseEnter={(e) =>
+                          (e.currentTarget.style.background = "#f0f0f0")
+                        }
+                        onMouseLeave={(e) =>
+                          (e.currentTarget.style.background = "white")
+                        }
+                      >
+                        {loc}
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ padding: "8px 15px", color: "#888" }}>No match found</div>
+                  )}
+                </div>
+              )}
+            </div>
 
-  {showCategoryDropdown && (
-    <div
-      style={{
-        position: "absolute",
-        top: "38px",
-        left: 0,
-        width: "100%",
-        backgroundColor: "white",
-        border: "1px solid #ccc",
-        borderRadius: "8px",
-        maxHeight: "150px",
-        overflowY: "auto",
-        zIndex: 9999,
-      }}
-    >
-      {filteredCategories.length > 0 ? (
-        filteredCategories.map((cat) => (
-          <div
-            key={cat}
-            onClick={() => {
-              setCategory(cat);
-              setShowCategoryDropdown(false);
-            }}
-            style={{
-              padding: "8px",
-              cursor: "pointer",
-              borderBottom: "1px solid #eee",
-            }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.background = "#f0f0f0")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.background = "white")
-            }
-          >
-            {cat}
-          </div>
-        ))
-      ) : (
-        <div style={{ padding: "8px", color: "#888" }}>No match found</div>
-      )}
-    </div>
-  )}
-</div>
+            <div style={formStyles.dropdownWrapper}>
+              <input
+                type="text"
+                value={category}
+                onChange={(e) => {
+                  const inputValue = e.target.value;
+                  setCategory(inputValue);
+                  setFilteredCategories(
+                    CATEGORIES.filter((cat) =>
+                      cat.toLowerCase().includes(inputValue.toLowerCase())
+                    )
+                  );
+                }}
+                onFocus={() => {
+                  setFilteredCategories(CATEGORIES);
+                  setShowCategoryDropdown(true);
+                }}
+                onBlur={() => setTimeout(() => setShowCategoryDropdown(false), 150)}
+                placeholder="Category"
+                style={formStyles.dropdownInput}
+                required
+              />
+
+              {showCategoryDropdown && (
+                <div style={formStyles.dropdownMenu}>
+                  {filteredCategories.length > 0 ? (
+                    filteredCategories.map((cat) => (
+                      <div
+                        key={cat}
+                        onClick={() => {
+                          setCategory(cat);
+                          setShowCategoryDropdown(false);
+                        }}
+                        style={formStyles.dropdownItem}
+                        onMouseEnter={(e) =>
+                          (e.currentTarget.style.background = "#f0f0f0")
+                        }
+                        onMouseLeave={(e) =>
+                          (e.currentTarget.style.background = "white")
+                        }
+                      >
+                        {cat}
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ padding: "8px 15px", color: "#888" }}>No match found</div>
+                  )}
+                </div>
+              )}
+            </div>
+
 
           </div>
               
-            <br />
-            <div className='describe'>
+            
+            <div style={formStyles.textareaContainer}>
                 <textarea
-              value={itemDescription}
-              onChange={(e) => limitWords(e.target.value, setItemDescription)}
-              placeholder='Describe the item'
-              style={{ color: '#475C6F', width: '98%', marginBottom: '30px'}}
-              required
-            />
-            <div style={{ position: 'absolute', top: '68%', marginLeft: '2%', fontSize: '12px', color: '#475C6F' }}>
-              {countWords(itemDescription)}/{WORD_LIMIT} words
+                  value={itemDescription}
+                  onChange={(e) => limitWords(e.target.value, setItemDescription)}
+                  placeholder='Describe the item (e.g., color, size, brand, unique markings)'
+                  style={formStyles.textareaField}
+                  required
+                />
+                <div style={formStyles.wordCount}>
+                  {countWords(itemDescription)}/{WORD_LIMIT} words
+                </div>
             </div>
 
-            <br />
-
-            <textarea
-              value={howItemFound}
-              onChange={(e) => limitWords(e.target.value, setHowItemFound)}
-              placeholder='How item found?'
-              style={{ color: '#475C6F', width: '98%', }}
-              required
-            />
-            <div style={{ position: 'absolute', top: '96%', marginLeft: '2%', fontSize: '12px', color: '#475C6F' }}>
-              {countWords(howItemFound)}/{WORD_LIMIT} words
-            </div>
+            <div style={formStyles.textareaContainer}>
+              <textarea
+                value={howItemFound}
+                onChange={(e) => limitWords(e.target.value, setHowItemFound)}
+                placeholder='How and where exactly did you find the item?'
+                style={formStyles.textareaField}
+                required
+              />
+              <div style={formStyles.wordCount}>
+                {countWords(howItemFound)}/{WORD_LIMIT} words
+              </div>
             </div>
           </form>
-          {/* --- SUBMIT BUTTON OUTSIDE FORM --- */}
+
           <button
             type="submit"
-            form="guest-found-form" // 👈 *** LINKS TO FORM ID ***
+            form="guest-found-form" 
             disabled={isSubmitting || isMatching || isModerating}
             style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "10px",
-              backgroundColor: "#BDDDFC",
-              color: "black",
-              padding: "12px 25px",
-              border: "none",
-              borderRadius: "10px",
-              cursor: isSubmitting || isMatching || isModerating ? "not-allowed" : "pointer",
-              fontSize: "16px",
-              fontWeight: "500",
-              marginTop: "130px" // 👈 Added margin top for spacing
+              ...formStyles.submitButton,
+              ...((isSubmitting || isMatching || isModerating) ? formStyles.disabledButton : {}),
+            }}
+            onMouseEnter={(e) => {
+              if (!(isSubmitting || isMatching || isModerating)) e.currentTarget.style.backgroundColor = '#384d5c';
+            }}
+            onMouseLeave={(e) => {
+              if (!(isSubmitting || isMatching || isModerating)) e.currentTarget.style.backgroundColor = '#475C6F'; 
             }}
           >
             {isModerating ? (
               <>
-                <img src="/Spin_black.gif" alt="Loading..." style={{ width: "20px", height: "20px" }} />
+                <img src="/Spin_black.gif" alt="Loading..." style={{ width: "20px", height: "20px", filter: 'invert(1)' }} />
                 <span>{CHECKING_SHORT}</span>
               </>
             ) : isMatching ? (
               <>
-                <img src="/Spin_black.gif" alt="Loading..." style={{ width: "20px", height: "20px" }} />
+                <img src="/Spin_black.gif" alt="Loading..." style={{ width: "20px", height: "20px", filter: 'invert(1)' }} />
                 <span>AI Matching...</span>
               </>
             ) : isSubmitting ? (
               <>
-                <img src="/Spin_black.gif" alt="Loading..." style={{ width: "20px", height: "20px" }} />
-                <span>Matching</span>
+                <img src="/Spin_black.gif" alt="Loading..." style={{ width: "20px", height: "20px", filter: 'invert(1)' }} />
+                <span>Submitting...</span>
               </>
             ) : (
-              "Submit Report"
+              "Submit Found Report"
             )}
           </button> 
         </div>

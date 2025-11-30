@@ -252,8 +252,8 @@ function LogIn() {
           show={showForgotModal}
           onHide={() => {
               setShowForgotModal(false);
-              setResetMessage(''); // Clear message on close
-              setForgotId(''); // Clear ID field on close
+              setResetMessage('');
+              setForgotId(''); 
           }}
           centered
         >
@@ -262,7 +262,6 @@ function LogIn() {
           </Modal.Header>
 
           <Modal.Body>
-            {/* Show input only if email hasn't been sent */}
             {!resetMessage.includes("sent") ? (
               <>
                 <p style={{ color: 'black' }}>
@@ -272,18 +271,16 @@ function LogIn() {
                   type='text'
                   placeholder='Student ID'
                   value={forgotId}
-                  onChange={(e) => setForgotId(e.target.value)} // No need to trim here, trim in handler
-                  className="mb-3" // Add margin bottom
+                  onChange={(e) => setForgotId(e.target.value)} 
+                  className="mb-3"
                 />
               </>
             ) : (
-                // Message shown after email is sent
                <p style={{ textAlign: 'center', color: 'black' }}>
                  Check your email inbox (and spam folder) for the password reset link.
                </p>
             )}
 
-            {/* Display status/error messages */}
             {resetMessage && (
               <p
                 style={{
@@ -299,7 +296,6 @@ function LogIn() {
           </Modal.Body>
 
           <Modal.Footer>
-            {/* Show different buttons based on whether email was sent */}
             {!resetMessage.includes("sent") ? (
               <>
                 <Button variant="secondary" onClick={() => {setShowForgotModal(false); setResetMessage(''); setForgotId('');}}>
@@ -307,7 +303,7 @@ function LogIn() {
                 </Button>
                 <Button
                   variant="primary"
-                  disabled={resetting || !forgotId.trim()} // Disable if resetting or input is empty/whitespace
+                  disabled={resetting || !forgotId.trim()} 
                   onClick={handlePasswordReset}
                 >
                   {resetting ? <Spinner animation="border" size="sm" /> : 'Send Reset Link'}

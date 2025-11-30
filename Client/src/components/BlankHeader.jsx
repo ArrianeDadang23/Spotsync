@@ -3,19 +3,16 @@ import '../user_components/styles/HomeHeader.css'
 import { useAuth } from '../context/AuthContext.jsx';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase.jsx';
-import HeaderAccountDropdown from './HeaderAccountDropdown.jsx';
-import HeaderNotifyDropdown from './HeaderNotifyDropdown.jsx';
 import { useNavigate } from 'react-router-dom';
 import { getAuth } from 'firebase/auth';
 import { useNotification } from "../context/NotificationContext";
 import { signOut } from "firebase/auth";
 import './styles/HeaderAccountDropdown.css';
-import CenterMessagePanel from './CenterMessagePanel.jsx';
 import Modal from 'react-bootstrap/Modal';
 import Button from 'react-bootstrap/Button';
-    import "./styles/HeaderNotifyDropdown.css";
-    import { getDatabase, ref, onValue, remove } from "firebase/database";
-    import FloatingAlert from "../components/FloatingAlert";
+import "./styles/HeaderNotifyDropdown.css";
+import { getDatabase, ref, onValue, remove } from "firebase/database";
+import FloatingAlert from "../components/FloatingAlert";
 
 
 
@@ -35,12 +32,10 @@ function BlankHeader() {
   const navigate = useNavigate();
   const auth = getAuth();
   const user = auth.currentUser; 
-  const { unreadCount, clearNotifications } = useNotification();
 
   const toggleDropDown = () => setDropDown(prev => !prev);
-  const toggleNotifyPanel = () => setNotifyPanel(prev => !prev);
 
-      const handleNavigate = (path) => {
+    const handleNavigate = (path) => {
     navigate(path);
   };
 
@@ -260,7 +255,6 @@ useEffect(() => {
   return (
     <>
 <div className='dropdown-containers' style={{ position: 'relative', left: '-10%', zIndex: 1000 }}>
-  {/* Account dropdown */}
   {dropDown && (
     <div 
       className="account-dropdown-menu" 
@@ -322,15 +316,8 @@ useEffect(() => {
         <p>Settings</p>
       </div>
 
-      <div className='account-dropdown-row'>
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-chat-right-quote" viewBox="0 0 16 16">
-          <path d="M2 1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h9.586a2 2 0 0 1 1.414.586l2 2V2a1 1 0 0 0-1-1zm12-1a2 2 0 0 1 2 2v12.793a.5.5 0 0 1-.854.353l-2.853-2.853a1 1 0 0 0-.707-.293H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2z" />
-          <path d="M7.066 4.76A1.665 1.665 0 0 0 4 5.668a1.667 1.667 0 0 0 2.561 1.406c-.131.389-.375.804-.777 1.22a.417.417 0 1 0 .6.58c1.486-1.54 1.293-3.214.682-4.112zm4 0A1.665 1.665 0 0 0 8 5.668a1.667 1.667 0 0 0 2.561 1.406c-.131.389-.375.804-.777 1.22a.417.417 0 1 0 .6.58c1.486-1.54 1.293-3.214.682-4.112z" />
-        </svg>
-        <p>User Feedback</p>
-      </div>
 
-<div className='account-dropdown-row' onClick={() => setShowModal(true)}>
+      <div className='account-dropdown-row' onClick={() => setShowModal(true)}>
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-box-arrow-in-left" viewBox="0 0 16 16">
           <path fillRule="evenodd" d="M10 3.5a.5.5 0 0 0-.5-.5h-8a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 1 1 0v2A1.5 1.5 0 0 1 9.5 14h-8A1.5 1.5 0 0 1 0 12.5v-9A1.5 1.5 0 0 1 1.5 2h8A1.5 1.5 0 0 1 11 3.5v2a.5.5 0 0 1-1 0z" />
           <path fillRule="evenodd" d="M4.146 8.354a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L5.707 7.5H14.5a.5.5 0 0 1 0 1H5.707l2.147 2.146a.5.5 0 0 1-.708.708z" />
@@ -361,126 +348,7 @@ useEffect(() => {
       </Modal>
 
 
-  {/* Notification dropdown */}
-  {notifyPanel && (
-    <div 
-      className="notify-dropdown-menu" 
-      ref={notifyRef} 
-      style={{
-        position: 'absolute',
-        right: '50px',
-        top: '40px',
-        background: '#fff',
-        borderRadius: '8px',
-        boxShadow: '0px 2px 6px rgba(0,0,0,0.15)',
-        padding: '10px',
-        minWidth: '320px',
-        minHeight: '300px',
-        overflowY: 'auto'
-      }}
-    >
-          <>
-      {alert && (
-        <FloatingAlert
-          message={alert.message}
-          type={alert.type}
-          onClose={() => setAlert(null)}
-        />
-      )}
-      <div className="notify-body" style={{ maxWidth: '300px', maxHeight: '280px' }}>
-        <h4 className="notify-title" style={{ marginTop: "-5px" }}>
-          Notifications
-        </h4>
-
-        <div className="notify-list">
-          {Object.keys(groupedNotifications).every(
-            (key) => groupedNotifications[key].length === 0
-          ) ? (
-            <p className="notify-empty">No recent notifications</p>
-          ) : (
-            Object.entries(groupedNotifications).map(
-              ([section, items]) =>
-                items.length > 0 && (
-                  <div key={section}>
-                    <h5 className="notify-section">{section}</h5>
-                    {items.map((n) => {
-                      const config =
-                        typeConfig[n.type] || {
-                          title: "Notification",
-                          icon: "bi-info-circle",
-                          color: "#062949ff",
-                        };
-
-                      return (
-                        <div key={n.id} className="notify-item">
-                          <div className="notify-text">
-                            <p
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "6px",
-                              }}
-                            >
-                              <i
-                                className={`bi ${config.icon}`}
-                                style={{ color: config.color, fontSize: "18px" }}
-                              ></i>
-                              <span style={{ display: "flex", flexDirection: "column" }}>
-                                <strong style={{ color: config.color, fontSize: '15px', marginBottom: '5px' }}>
-                                  {config.title}
-                                </strong>
-                                <span
-                                  dangerouslySetInnerHTML={{ __html: n.message }}
-                                  style={{ marginLeft: "2px", color: "black" }}
-                                />
-                              </span>
-                            </p>
-                            <small>
-                              {n.timestamp
-                                ? new Date(n.timestamp).toLocaleString()
-                                : "Just now"}
-                            </small>
-                          </div>
-
-                          <button
-                            onClick={() => handleDelete(n.id)}
-                            className="notify-delete"
-                            title="Delete notification"
-                          >
-                            🗑
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )
-            )
-          )}
-        </div>
-
-        <div className="notify-footer">
-          <button
-            onClick={handleNavigate}
-            style={{
-              backgroundColor: "#475C6F",
-              border: "none",
-      
-              cursor: "pointer",
-              padding: "5px 10px",
-              borderRadius: "5px",
-              color: "white",
-              position: 'relative'
-            }}
-          >
-            View all
-          </button>
-        </div>
-      </div>
-    </>
-
-    </div>
-  )}
-</div>
+  </div>
     <div className='home-header-body'>
 
         <div className='home-header-right'>
@@ -512,7 +380,7 @@ useEffect(() => {
           )}
 
           </div>
-           <p onClick={toggleDropDown}>{lastName}</p>
+           <p style={{color: 'white'}} onClick={toggleDropDown}>{lastName}</p>
         </div>
     </div>
     

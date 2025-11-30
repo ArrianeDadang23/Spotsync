@@ -252,7 +252,6 @@ useEffect(() => {
   return (
     <>
 <div className='dropdown-containers' style={{ position: 'relative', left: '90%', zIndex: 1000 }}>
-  {/* Account dropdown */}
   {dropDown && (
     <div 
       className="account-dropdown-menu" 
@@ -346,125 +345,6 @@ useEffect(() => {
         </Modal.Footer>
       </Modal>
 
-  {/* Notification dropdown */}
-  {notifyPanel && (
-    <div 
-      className="notify-dropdown-menu" 
-      ref={notifyRef} 
-      style={{
-        position: 'absolute',
-        right: '50px',
-        top: '40px',
-        background: '#fff',
-        borderRadius: '8px',
-        boxShadow: '0px 2px 6px rgba(0,0,0,0.15)',
-        padding: '10px',
-        minWidth: '320px',
-        minHeight: '300px',
-        overflowY: 'auto'
-      }}
-    >
-          <>
-      {alert && (
-        <FloatingAlert
-          message={alert.message}
-          type={alert.type}
-          onClose={() => setAlert(null)}
-        />
-      )}
-      <div className="notify-body" style={{ maxWidth: '300px', maxHeight: '280px' }}>
-        <h4 className="notify-title" style={{ marginTop: "-5px" }}>
-          Notifications
-        </h4>
-
-        <div className="notify-list">
-          {Object.keys(groupedNotifications).every(
-            (key) => groupedNotifications[key].length === 0
-          ) ? (
-            <p className="notify-empty">No recent notifications</p>
-          ) : (
-            Object.entries(groupedNotifications).map(
-              ([section, items]) =>
-                items.length > 0 && (
-                  <div key={section}>
-                    <h5 className="notify-section">{section}</h5>
-                    {items.map((n) => {
-                      const config =
-                        typeConfig[n.type] || {
-                          title: "Notification",
-                          icon: "bi-info-circle",
-                          color: "#062949ff",
-                        };
-
-                      return (
-                        <div key={n.id} className="notify-item">
-                          <div className="notify-text">
-                            <p
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "6px",
-                              }}
-                            >
-                              <i
-                                className={`bi ${config.icon}`}
-                                style={{ color: config.color, fontSize: "18px" }}
-                              ></i>
-                              <span style={{ display: "flex", flexDirection: "column" }}>
-                                <strong style={{ color: config.color, fontSize: '15px', marginBottom: '5px' }}>
-                                  {config.title}
-                                </strong>
-                                <span
-                                  dangerouslySetInnerHTML={{ __html: n.message }}
-                                  style={{ marginLeft: "2px", color: "black" }}
-                                />
-                              </span>
-                            </p>
-                            <small>
-                              {n.timestamp
-                                ? new Date(n.timestamp).toLocaleString()
-                                : "Just now"}
-                            </small>
-                          </div>
-
-                          <button
-                            onClick={() => handleDelete(n.id)}
-                            className="notify-delete"
-                            title="Delete notification"
-                          >
-                            🗑
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )
-            )
-          )}
-        </div>
-
-        <div className="notify-footer">
-          <button
-            onClick={handleNavigate}
-            style={{
-              backgroundColor: "#475C6F",
-              border: "none",
-      
-              cursor: "pointer",
-              padding: "5px 10px",
-              borderRadius: "5px",
-              color: "white",
-              position: 'relative'
-            }}
-          >
-            View all
-          </button>
-        </div>
-      </div>
-    </>
-
-    </div>
-  )}
 </div>
     <div className='home-header-body'>
         <button onClick={() => navigate(`/users/lost-items/${user?.uid}`)}>

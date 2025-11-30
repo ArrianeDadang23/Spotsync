@@ -1,4 +1,3 @@
-// InactivityHandler.jsx
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Modal from "react-bootstrap/Modal";
@@ -13,7 +12,7 @@ export default function InactivityHandler({ timeout = 5 * 60 * 1000 }) {
     if (timerRef.current) clearTimeout(timerRef.current);
 
     timerRef.current = setTimeout(() => {
-      setShowModal(true); // show modal after inactivity
+      setShowModal(true); 
     }, timeout);
   };
 

@@ -25,7 +25,6 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
-// --- Type Definitions ---
 interface UserData {
   firstName?: string;
   lastName?: string;
@@ -41,7 +40,6 @@ interface UserData {
   birthdate?: string;
 }
 
-// --- Constants ---
 const API = "https://server.spotsync.site";
 const PLACEHOLDER_COLOR = "#A9A9A9";
 const WORD_LIMIT = 150;
@@ -52,7 +50,6 @@ const INAPPROPRIATE_ALERT_TITLE = "Inappropriate Content Detected";
 const INAPPROPRIATE_ALERT_MESSAGE = (flaggedCount: number) => 
   `${flaggedCount} image(s) were flagged and not added. Please upload appropriate images.`;
 
-// --- Lists (from original file) ---
 const LOCATIONS = [
     "Arts and Culture Building", "Guidance and Testing Center", "College of Medicine",
     "Old Engineering Building", "ICT Building", "Administration Building",
@@ -76,13 +73,11 @@ const CATEGORIES = [
 ];
 
 
-// --- Main Screen Component ---
 function GuestReportLostPage() {
   const { currentUser } = useAuth();
   const router = useRouter(); 
   const auth = getAuth();
 
-  // Form State
   const [itemName, setItemName] = useState('');
   const [dateLost, setDateLost] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -92,7 +87,6 @@ function GuestReportLostPage() {
   const [howItemLost, setHowItemLost] = useState('');
   const [images, setImages] = useState<ImagePicker.ImagePickerAsset[]>([]); 
 
-  // User Data State (pre-filled for guest)
   const [firstName, setFirstName] = useState(''); 
   const [lastName, setLastName] = useState(''); 
   const [middleName, setMiddleName] = useState('');
@@ -107,9 +101,8 @@ function GuestReportLostPage() {
   const [birthdate, setBirthdate] = useState('');
   const [owner, setOwner] = useState('');
 
-  // UI State
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isMatching, setIsMatching] = useState(false);
+  const [isMatching, setIsMatching] = useState(false); 
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -117,8 +110,8 @@ function GuestReportLostPage() {
   const [categorySearch, setCategorySearch] = useState('');
   const [isModerating, setIsModerating] = useState(false);
   const [showImageSourceModal, setShowImageSourceModal] = useState(false);
+  const [progress, setProgress] = useState(0);
 
-  // Fetch Guest Info (mainly for email)
   useEffect(() => {
     const fetchGuestInfo = async () => {
       if (!currentUser?.uid) return;
@@ -159,7 +152,6 @@ function GuestReportLostPage() {
     fetchGuestInfo();
   }, [currentUser]);
 
-  // --- Image Moderation ---
   const checkImageModeration = async (imageBase64: string): Promise<boolean | null> => {
     try {
       const response = await fetch(`${API}/api/moderate-image`, {
@@ -228,7 +220,6 @@ function GuestReportLostPage() {
   const handleImagePick = () => setShowImageSourceModal(true);
   const removeImage = (index: number) => setImages(prev => prev.filter((_, i) => i !== index));
 
-  // --- Upload & Notification ---
   const uploadLostItemImage = async (fileAsset: ImagePicker.ImagePickerAsset, folder: string) => {
     const base64Img = `data:image/jpeg;base64,${fileAsset.base64}`;
     const formData = new FormData();
@@ -255,7 +246,6 @@ function GuestReportLostPage() {
     });
   };
 
-  // --- Submit Logic ---
   const handleSubmit = async () => {
     if (!itemName || !dateLost || !locationLost || !category || !itemDescription || !howItemLost) {
       return Alert.alert('Error', 'Please fill all required fields.');
@@ -269,24 +259,24 @@ function GuestReportLostPage() {
     
     setIsSubmitting(true);
     setIsMatching(true); 
+    setProgress(0); 
+
+    let interval: NodeJS.Timeout | null = null; 
 
     try {
       const user = auth.currentUser;
       if (!user) throw new Error("User session ended. Please restart.");
       const uid = user.uid;
 
-      // 1. Upload images
       const imageURLs = [];
       for (const imageAsset of images) {
         const url = await uploadLostItemImage(imageAsset, `lost-items/${uid}`);
         imageURLs.push(url);
       }
 
-      // 2. Generate Item ID
       const customItemId = `ITM-${Math.floor(100 + Math.random() * 900)}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(100 + Math.random() * 900)}`;
 
-      // 3. Save to lostItems
-      const docRef = await addDoc(collection(db, 'lostItems'), {
+      const lostItemData = {
         itemId: customItemId,
         uid,
         images: imageURLs,
@@ -306,17 +296,35 @@ function GuestReportLostPage() {
           address, profileURL, coverURL, course, section, yearLevel, birthdate,
         },
         createdAt: serverTimestamp(),
-      });
+      };
+      
+      const docRef = await addDoc(collection(db, 'lostItems'), lostItemData);
 
-      // 4. Trigger Matching & Notifications
+      interval = setInterval(() => {
+          setProgress((oldProgress) => {
+              if (oldProgress >= 90) return 90;
+              const diff = Math.random() * 10;
+              return Math.min(oldProgress + diff, 90);
+          });
+      }, 500); 
+
+
       const matchResponse = await fetch(`${API}/api/match/lost-to-found`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ uidLost: docRef.id }),
       });
 
-      if (!matchResponse.ok) throw new Error("Matching service failed");
-      const matches = await matchResponse.json();
+      if (interval) clearInterval(interval); 
+      setProgress(100); 
+
+      let matches = [];
+      if (!matchResponse.ok) {
+        console.error("Matching service failed on guest report:", await matchResponse.text());
+        Alert.alert("Notice", "Report submitted, but AI matching encountered an issue. It will be processed later.");
+      } else {
+        matches = await matchResponse.json();
+      }
       
       const top4Matches = matches.slice(0, 4);
       for (let i = 0; i < top4Matches.length; i++) {
@@ -340,7 +348,7 @@ function GuestReportLostPage() {
         if (i === 0 && match.scores?.overallScore >= 60 && email) { 
           const bestMatch = top4Matches[0];
           const notifyMsg = `This is the most possible match for your lost item <b>${itemName}</b>: Found item <b>${bestMatch.foundItem?.itemName} : Transaction ID: ${bestMatch.transactionId}</b>.`;
-          await notifyUser(currentUser.uid, notifyMsg);
+          await notifyUser(currentUser!.uid, notifyMsg);
           await fetch(`${API}/api/send-email`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -353,7 +361,6 @@ function GuestReportLostPage() {
         }
       }
 
-      // 5. Save to itemManagement
       await addDoc(collection(db, 'itemManagement'), {
         itemId: customItemId,  
         uid,
@@ -369,14 +376,16 @@ function GuestReportLostPage() {
         createdAt: serverTimestamp(),
       });
 
-      // 6. Navigate to results page using router.replace
       router.replace({
-        pathname: "/GuestLostMatchResults", // Adjust path
+        pathname: "/GuestLostMatchResults",
         params: { matches: JSON.stringify(matches) }
       });
+      
+      Alert.alert("Success", "Report submitted! Check the results.");
 
     } catch (error: any) {
       console.error(error);
+      if (interval) clearInterval(interval); 
       Alert.alert('Submission Failed', error.message || 'Could not submit the report.');
     } finally {
       setIsSubmitting(false);
@@ -384,15 +393,13 @@ function GuestReportLostPage() {
     }
   };
 
-  // --- Helper Functions ---
   const limitWords = (newText: string, currentText: string, setFn: (value: string) => void, limit: number) => {
     const words = newText.split(/\s+/).filter(Boolean);
     if (words.length > limit) {
-      // Only block typing if they are adding text, not deleting
       if (newText.length > currentText.length) {
         setFn(words.slice(0, limit).join(" "));
       } else {
-         setFn(newText); // Allow deleting
+         setFn(newText);
       }
     } else {
       setFn(newText);
@@ -402,18 +409,14 @@ function GuestReportLostPage() {
   const countWords = (text: string) => text.trim().split(/\s+/).filter(Boolean).length;
   
   const onDateChange = (event: DateTimePickerEvent, selectedDateValue?: Date) => {
-    // Always close the picker modal/view after an action on both platforms
     setShowDatePicker(false); 
 
-    // Only update the state if the user confirmed a date ("set" event)
     if (event.type === 'set' && selectedDateValue) {
         setSelectedDate(selectedDateValue);
-        setDateLost(selectedDateValue.toISOString().split('T')[0]); // Format YYYY-MM-DD
+        setDateLost(selectedDateValue.toISOString().split('T')[0]); 
     }
-    // If event.type is 'dismissed' (Android cancel) or 'cancel' (iOS), do nothing
   };
   
-  // Modal Renderer
   const renderPickerModal = (
     visible: boolean, onClose: () => void, title: string, data: string[],
     onSelect: (value: string) => void, search: string, setSearch: (value: string) => void
@@ -443,7 +446,21 @@ function GuestReportLostPage() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Moderation Loading Modal */}
+      <Modal visible={isMatching} transparent={true} animationType="fade">
+          <View style={styles.matchingOverlay}>
+            <View style={styles.matchingContent}>
+              <ActivityIndicator size="large" color="#BDDDFC" style={{ marginBottom: 20 }} />
+              <Text style={styles.matchingText}>Searching for Matches...</Text>
+              
+              <View style={styles.progressContainer}>
+                <View style={[styles.progressBar, { width: `${progress}%` }]} />
+              </View>
+              
+              <Text style={styles.progressPercentage}>{Math.round(progress)}%</Text>
+            </View>
+          </View>
+      </Modal>
+
       <Modal visible={isModerating} transparent={true} animationType="fade">
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color="#FFFFFF" />
@@ -451,7 +468,6 @@ function GuestReportLostPage() {
         </View>
       </Modal>
 
-      {/* Image Source Modal */}
       <Modal visible={showImageSourceModal} transparent={true} animationType="slide" onRequestClose={() => setShowImageSourceModal(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.imageSourceModalContent}>
@@ -471,7 +487,6 @@ function GuestReportLostPage() {
         </View>
       </Modal>
 
-      {/* Main Form */}
       <KeyboardAwareScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -481,7 +496,6 @@ function GuestReportLostPage() {
         <View style={styles.formContainer}>
           <Text style={styles.mainTitle}>Report Lost Item</Text>
 
-          {/* SECTION 1: Item Details */}
           <View style={styles.sectionCard}>
             <Text style={styles.sectionTitle}>1. Item Details</Text>
             <Text style={styles.label}>Item Image (Max 1)</Text>
@@ -516,7 +530,7 @@ function GuestReportLostPage() {
               placeholder="e.g., Black Leather Wallet"
               placeholderTextColor={PLACEHOLDER_COLOR}
               value={itemName}
-              onChangeText={(text) => limitWords(text, itemName, setItemName, 5)} // Use 5 word limit
+              onChangeText={(text) => limitWords(text, itemName, setItemName, 5)}
               maxLength={50}
             />
 
@@ -526,12 +540,10 @@ function GuestReportLostPage() {
             </TouchableOpacity>
           </View>
 
-          {/* SECTION 2: Circumstance Details */}
           <View style={styles.sectionCard}>
             <Text style={styles.sectionTitle}>2. Location & Time</Text>
 
             <Text style={styles.label}>Date Lost</Text>
-            {/* 🔑 FIX: Simplified Date Picker logic */}
             <TouchableOpacity style={styles.pickerButton} onPress={() => setShowDatePicker(true)}>
                 <Text style={[styles.pickerButtonText, !dateLost && styles.placeholderText]}>{dateLost || "Select Date"}</Text>
             </TouchableOpacity>
@@ -546,7 +558,6 @@ function GuestReportLostPage() {
                 maximumDate={new Date()}
               />
             )}
-            {/* 🔑 END FIX */}
 
             <Text style={styles.label}>Location Lost</Text>
             <TouchableOpacity style={styles.pickerButton} onPress={() => setShowLocationModal(true)}>
@@ -565,7 +576,6 @@ function GuestReportLostPage() {
             <Text style={styles.wordCount}>{countWords(howItemLost)}/{WORD_LIMIT} words</Text>
           </View>
 
-          {/* SECTION 3: Item Description */}
           <View style={styles.sectionCard}>
             <Text style={styles.sectionTitle}>3. Detailed Description</Text>
             <Text style={styles.label}>Item Description</Text>
@@ -580,7 +590,6 @@ function GuestReportLostPage() {
             <Text style={styles.wordCount}>{countWords(itemDescription)}/{WORD_LIMIT} words</Text>
           </View>
 
-          {/* Submit Button */}
           <TouchableOpacity
             style={[styles.submitButton, (isSubmitting || isMatching || isModerating) && styles.buttonDisabled]}
             onPress={handleSubmit}
@@ -614,7 +623,6 @@ function GuestReportLostPage() {
         </View>
       </KeyboardAwareScrollView>
 
-      {/* Location Modal */}
       {renderPickerModal(
         showLocationModal,
         () => { setLocationSearch(''); setShowLocationModal(false); },
@@ -623,7 +631,6 @@ function GuestReportLostPage() {
         locationSearch, setLocationSearch
       )}
 
-      {/* Category Modal */}
       {renderPickerModal(
         showCategoryModal,
         () => { setCategorySearch(''); setShowCategoryModal(false); },
@@ -635,23 +642,19 @@ function GuestReportLostPage() {
   );
 }
 
-// --- 🔑 Corrected Helper Function ---
 const limitWords = (newText: string, currentText: string, setFn: (value: string) => void, limit: number) => {
     const words = newText.split(/\s+/).filter(Boolean);
     if (words.length > limit) {
-        // Only enforce limit if user is typing *more* characters
-        // This allows them to delete/backspace
-        if (newText.length > currentText.length) {
-            setFn(words.slice(0, limit).join(" "));
-        } else {
-             setFn(newText); // Allow deleting
-        }
+      if (newText.length > currentText.length) {
+        setFn(words.slice(0, limit).join(" "));
+      } else {
+         setFn(newText);
+      }
     } else {
-        setFn(newText);
+      setFn(newText);
     }
 };
 
-// --- Styles (Borrowed from ReportFoundItemScreen.tsx) ---
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f0f2f5', paddingTop: Platform.OS === 'android' ? 25 : 0 },
   scrollContent: { paddingBottom: 100 },
@@ -715,7 +718,7 @@ const styles = StyleSheet.create({
     borderColor: '#ddd', 
     justifyContent: 'center', 
     marginBottom: 20,
-    minHeight: 50, // Ensure consistent height
+    minHeight: 50,
   },
   pickerButtonText: { 
     fontSize: 16, 
@@ -822,6 +825,45 @@ const styles = StyleSheet.create({
   imageSourceOption: { flexDirection: 'row', alignItems: 'center', padding: 15, borderBottomWidth: 1, borderBottomColor: '#eee', width: '100%', justifyContent: 'flex-start' },
   imageSourceOptionText: { fontSize: 16, color: '#333' },
   imageSourceModalClose: { marginTop: 15, padding: 10, backgroundColor: '#6c757d', borderRadius: 8, width: '100%', alignItems: 'center' },
+  
+  matchingOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)', 
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  matchingContent: {
+    width: '80%',
+    maxWidth: 400,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  matchingText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    color: '#BDDDFC',
+    textAlign: 'center',
+  },
+  progressContainer: {
+    width: '100%',
+    height: 20,
+    backgroundColor: '#475C6F',
+    borderRadius: 10,
+    overflow: 'hidden',
+    marginBottom: 10,
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: '#BDDDFC',
+    borderRadius: 10,
+  },
+  progressPercentage: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: 'white',
+  },
 });
 
 export default GuestReportLostPage;

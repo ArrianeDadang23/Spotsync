@@ -9,17 +9,16 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Modal, // For details popup
-  Clipboard, // For copying transaction ID
+  Modal, 
+  Clipboard, 
     Platform,
 } from 'react-native';
-import { useLocalSearchParams, useNavigation } from 'expo-router'; // Use expo-router hooks
+import { useLocalSearchParams, useNavigation } from 'expo-router'; 
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { getAuth } from 'firebase/auth';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import GuestRatingModal from '../components/GuestRatingModal'; // Assuming RN version exists
+import GuestRatingModal from '../components/GuestRatingModal'; 
 
-// --- Type Definitions ---
 interface PersonalInfo {
   firstName?: string;
   lastName?: string;
@@ -42,8 +41,8 @@ interface MatchItemDetails {
 
 interface Match {
   transactionId: string;
-  lostItem?: MatchItemDetails; // This will be the guest's item
-  foundItem?: MatchItemDetails; // This will be the item found by others
+  lostItem?: MatchItemDetails; 
+  foundItem?: MatchItemDetails; 
   scores: {
     overallScore: number;
     descriptionScore: number;
@@ -53,7 +52,6 @@ interface Match {
   };
 }
 
-// Define nav types (adjust as needed)
 type RootStackParamList = {
   GuestHome: { userId: string };
   GuestLostItemForm: { userId: string };
@@ -61,9 +59,7 @@ type RootStackParamList = {
 };
 type MatchResultsNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-// --- Reusable Match Card ---
 const MatchCard = ({ match, index, onDetailsClick }: { match: Match; index: number; onDetailsClick: (item: MatchItemDetails) => void }) => {
-  // Guest reported LOST, so we display the FOUND item
   const matchItem = match.foundItem;
   if (!matchItem) return null;
 
@@ -88,14 +84,12 @@ const MatchCard = ({ match, index, onDetailsClick }: { match: Match; index: numb
       
       <View style={styles.scoresContainer}>
         <Text style={styles.scoresTitle}>Match Scores</Text>
-        {/* Overall */}
         <View style={styles.scoreRow}>
           <Text style={styles.scoreText}>Overall: {scores.overallScore || 0}%</Text>
           <View style={styles.progressBarBackground}>
             <View style={[styles.progressBarFill, { width: `${scores.overallScore || 0}%` }]} />
           </View>
         </View>
-        {/* Others */}
         <View style={styles.scoreRow}>
           <Text style={styles.scoreText}>Image: {scores.imageScore || 0}%</Text>
           <View style={styles.progressBarBackground}>
@@ -148,7 +142,6 @@ const MatchCard = ({ match, index, onDetailsClick }: { match: Match; index: numb
   );
 };
 
-// --- Details Modal ---
 const ItemDetailModal = ({ item, visible, onClose }: { item: MatchItemDetails | null; visible: boolean; onClose: () => void }) => {
     if (!item) return null;
     
@@ -189,7 +182,6 @@ const ItemDetailModal = ({ item, visible, onClose }: { item: MatchItemDetails | 
 };
 
 
-// --- Main Screen Component ---
 export default function GuestLostMatchResults() {
   const params = useLocalSearchParams();
   const navigation = useNavigation<MatchResultsNavigationProp>();
@@ -206,7 +198,7 @@ export default function GuestLostMatchResults() {
         const parsedMatches = JSON.parse(params.matches as string) as Match[];
         const sortedMatches = parsedMatches
           .sort((a, b) => (b.scores?.overallScore || 0) - (a.scores?.overallScore || 0))
-          .slice(0, 4); // Sort and slice
+          .slice(0, 4); 
         setMatches(sortedMatches);
       } catch (e) {
         console.error("Failed to parse matches:", e);
@@ -216,7 +208,7 @@ export default function GuestLostMatchResults() {
   }, [params.matches]);
 
   const handleNavigate = () => {
-    setShowRatingModal(true); // Open rating modal on "Continue"
+    setShowRatingModal(true); 
   };
 
   const handleMatchAnother = () => {
@@ -224,11 +216,8 @@ export default function GuestLostMatchResults() {
     navigation.navigate('GuestLostItemForm', { userId: currentUser.uid });
   };
   
-  // Rating modal submit (simplified, assumes GuestRatingModal handles its own state)
    const handleRatingSubmit = (rating: number, feedback: string) => {
-     // Logic to submit rating (copied from FoundMatchResults)
      console.log("Rating:", rating, "Feedback:", feedback);
-     // Simulating success
      Alert.alert("Feedback Submitted", "Thank you!");
      setShowRatingModal(false);
      navigation.navigate('GuestHome', { userId: currentUser!.uid });
@@ -243,10 +232,10 @@ export default function GuestLostMatchResults() {
       />
 
       <GuestRatingModal
-         show={showRatingModal} // Prop name might differ
+         show={showRatingModal} 
          onClose={() => setShowRatingModal(false)}
-         onSubmit={handleRatingSubmit} // Pass handler
-         isSubmitting={false} // Manage submitting state if needed
+         onSubmit={handleRatingSubmit}
+         isSubmitting={false}
       />
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
@@ -259,13 +248,12 @@ export default function GuestLostMatchResults() {
               key={match.transactionId || index}
               match={match}
               index={index}
-              onDetailsClick={setSelectedItem} // Set item to show in modal
+              onDetailsClick={setSelectedItem}
             />
           ))
         )}
       </ScrollView>
 
-      {/* Footer Buttons */}
       <View style={styles.actionButtonContainer}>
         <TouchableOpacity style={styles.secondaryButton} onPress={handleNavigate}>
           <Text style={styles.secondaryButtonText}>Continue</Text>
@@ -279,11 +267,10 @@ export default function GuestLostMatchResults() {
   );
 }
 
-// --- Styles (Borrowed from FoundMatchResults.tsx) ---
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f0f2f5', marginTop: Platform.OS === 'android' ? 25 : 0 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  scrollContainer: { padding: 16, paddingBottom: 100 }, // Ensure space for footer buttons
+  scrollContainer: { padding: 16, paddingBottom: 100 }, 
   pageTitle: {
       fontSize: 24,
       fontWeight: 'bold',
@@ -335,7 +322,7 @@ const styles = StyleSheet.create({
       fontWeight: 'bold',
   },
   actionButtonContainer: {
-      position: 'absolute', // Fix footer
+      position: 'absolute', 
       bottom: 0,
       left: 0,
       right: 0,
@@ -343,7 +330,7 @@ const styles = StyleSheet.create({
       justifyContent: 'space-around',
       paddingVertical: 10,
       paddingHorizontal: 15,
-      paddingBottom: Platform.OS === 'ios' ? 30 : 15, // Safe area padding
+      paddingBottom: Platform.OS === 'ios' ? 30 : 15, 
       backgroundColor: '#ffffff',
       borderTopWidth: 1,
       borderTopColor: '#e0e0e0',
@@ -371,7 +358,6 @@ const styles = StyleSheet.create({
   },
   secondaryButtonText: { color: '#143447', fontSize: 16, fontWeight: 'bold' },
   noMatchesText: { fontSize: 16, color: '#666', textAlign: 'center', paddingVertical: 20 },
-  // Modal Styles
   modalOverlay: {
       flex: 1,
       backgroundColor: 'rgba(0,0,0,0.6)',
@@ -406,13 +392,13 @@ const styles = StyleSheet.create({
   },
   modalImage: {
       width: '100%',
-      height: 250, // Fixed height for modal image
+      height: 250, 
       borderRadius: 8,
       marginBottom: 15,
       backgroundColor: '#eee',
   },
    modalDetailsContainer: {
-       maxHeight: 150, // Make details scrollable if too long
+       maxHeight: 150, 
    },
   modalDetailRow: {
       fontSize: 15,

@@ -9,17 +9,16 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Modal, // For details popup
-  Clipboard, // For copying transaction ID
+  Modal, 
+  Clipboard, 
   Platform,
 } from 'react-native';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { getAuth } from 'firebase/auth';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import GuestRatingModal from '../components/GuestRatingModal'; // Assuming RN version exists
+import GuestRatingModal from '../components/GuestRatingModal';
 
-// --- Type Definitions (Identical to GuestLostMatchResults) ---
 interface PersonalInfo {
   firstName?: string;
   lastName?: string;
@@ -34,16 +33,16 @@ interface MatchItemDetails {
   images?: string[];
   locationLost?: string;
   locationFound?: string;
-  dateLost?: string; // Changed from dateFound
-  howItemLost?: string; // Changed from howItemFound
+  dateLost?: string; 
+  howItemLost?: string;
   category?: string;
   personalInfo?: PersonalInfo;
 }
 
 interface Match {
   transactionId: string;
-  lostItem?: MatchItemDetails; // This will be the item lost by others
-  foundItem?: MatchItemDetails; // This will be the guest's item
+  lostItem?: MatchItemDetails; 
+  foundItem?: MatchItemDetails;
   scores: {
     overallScore: number;
     descriptionScore: number;
@@ -53,7 +52,6 @@ interface Match {
   };
 }
 
-// Define nav types (adjust as needed)
 type RootStackParamList = {
   GuestHome: { userId: string };
   GuestFoundItemForm: { userId: string };
@@ -61,9 +59,7 @@ type RootStackParamList = {
 };
 type MatchResultsNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-// --- Reusable Match Card ---
 const MatchCard = ({ match, index, onDetailsClick }: { match: Match; index: number; onDetailsClick: (item: MatchItemDetails) => void }) => {
-  // Guest reported FOUND, so we display the LOST item
   const matchItem = match.lostItem;
   if (!matchItem) return null;
 
@@ -88,14 +84,12 @@ const MatchCard = ({ match, index, onDetailsClick }: { match: Match; index: numb
       
       <View style={styles.scoresContainer}>
         <Text style={styles.scoresTitle}>Match Scores</Text>
-        {/* Overall */}
         <View style={styles.scoreRow}>
           <Text style={styles.scoreText}>Overall: {scores.overallScore || 0}%</Text>
           <View style={styles.progressBarBackground}>
             <View style={[styles.progressBarFill, { width: `${scores.overallScore || 0}%` }]} />
           </View>
         </View>
-        {/* Others */}
         <View style={styles.scoreRow}>
           <Text style={styles.scoreText}>Image: {scores.imageScore || 0}%</Text>
           <View style={styles.progressBarBackground}>
@@ -148,7 +142,6 @@ const MatchCard = ({ match, index, onDetailsClick }: { match: Match; index: numb
   );
 };
 
-// --- Details Modal ---
 const ItemDetailModal = ({ item, visible, onClose }: { item: MatchItemDetails | null; visible: boolean; onClose: () => void }) => {
     if (!item) return null;
     
@@ -189,7 +182,6 @@ const ItemDetailModal = ({ item, visible, onClose }: { item: MatchItemDetails | 
 };
 
 
-// --- Main Screen Component ---
 export default function GuestFoundMatchResults() {
   const params = useLocalSearchParams();
   const navigation = useNavigation<MatchResultsNavigationProp>();
@@ -262,7 +254,6 @@ export default function GuestFoundMatchResults() {
         )}
       </ScrollView>
 
-      {/* Footer Buttons */}
       <View style={styles.actionButtonContainer}>
         <TouchableOpacity style={styles.secondaryButton} onPress={handleNavigate}>
           <Text style={styles.secondaryButtonText}>Continue</Text>
@@ -276,7 +267,6 @@ export default function GuestFoundMatchResults() {
   );
 }
 
-// --- Styles (Identical to GuestLostMatchResults) ---
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f0f2f5', marginTop: Platform.OS === 'android' ? 25 : 0 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
@@ -368,7 +358,6 @@ const styles = StyleSheet.create({
   },
   secondaryButtonText: { color: '#143447', fontSize: 16, fontWeight: 'bold' },
   noMatchesText: { fontSize: 16, color: '#666', textAlign: 'center', paddingVertical: 20 },
-  // Modal Styles
   modalOverlay: {
       flex: 1,
       backgroundColor: 'rgba(0,0,0,0.6)',
